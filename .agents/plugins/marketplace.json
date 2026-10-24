@@ -1,0 +1,12 @@
+{
+  "name": "codex-accounts-local",
+  "interface": { "displayName": "本机账号工具" },
+  "plugins": [
+    {
+      "name": "codex-accounts",
+      "source": { "source": "local", "path": "./Plugin" },
+      "policy": { "installation": "AVAILABLE", "authentication": "ON_INSTALL" },
+      "category": "Productivity"
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+name: Bug report
+description: Report a reproducible problem using synthetic or redacted data.
+body:
+  - type: markdown
+    attributes:
+      value: "Never attach tokens, cookies, auth files, vaults, account emails or raw diagnostics. For a security issue, follow SECURITY.md."
+  - type: input
+    id: version
+    attributes:
+      label: Version and Windows architecture
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Reproduction with synthetic data
+      description: Include expected and actual behavior. Do not use a real account merely to reproduce.
+    validations:
+      required: true
+  - type: textarea
+    id: evidence
+    attributes:
+      label: Safe evidence and checks performed
+      description: Include exit codes or redacted rule identifiers. Do not upload raw test directories or personal screenshots.

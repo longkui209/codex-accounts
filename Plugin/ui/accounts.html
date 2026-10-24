@@ -1,0 +1,1005 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data: https://cdn.openai.com https://images.openai.com https://files.oaiusercontent.com https://cdn.auth0.com https://lh3.googleusercontent.com https://lh4.googleusercontent.com https://lh5.googleusercontent.com https://lh6.googleusercontent.com; connect-src 'none'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'">
+  <title>Codex 账号切换</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --page: #f5f7f6; --surface: #ffffff; --soft: #f1f5f3; --ink: #192923; --muted: #687970;
+      --border: #e1e8e3; --accent: #0f8b74; --accent-soft: #e6f5ef; --warning: #9c681d; --warning-soft: #fff6e4;
+      --danger: #ae3d42; --danger-soft: #fff0f0; --radius: 18px;
+      font-family: var(--font-sans, "Segoe UI", "Microsoft YaHei", system-ui, sans-serif);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --page: #171c19; --surface: #202722; --soft: #28302a; --ink: #edf4ee; --muted: #a4b2a8;
+        --border: #364138; --accent: #60d3b7; --accent-soft: #203e33; --warning: #edc27b; --warning-soft: #3a3020;
+        --danger: #ffa6a8; --danger-soft: #3b2628;
+      }
+    }
+    :root[data-theme="dark"] {
+      --page: #171c19; --surface: #202722; --soft: #28302a; --ink: #edf4ee; --muted: #a4b2a8;
+      --border: #364138; --accent: #60d3b7; --accent-soft: #203e33; --warning: #edc27b; --warning-soft: #3a3020;
+      --danger: #ffa6a8; --danger-soft: #3b2628;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--color-text-primary, var(--ink)); background: var(--color-background-secondary, var(--page)); }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    button:disabled { cursor: default; opacity: .47; }
+    button:focus-visible, input:focus-visible, summary:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+    [hidden] { display: none !important; }
+    .app { max-width: 820px; padding: 26px; margin: 0 auto; }
+    .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 18px; margin-bottom: 24px; }
+    .header-actions { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; justify-content: flex-end; }
+    .language-select { min-height: 38px; max-width: 145px; padding: 8px 25px 8px 10px; color: inherit; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-size: 12px; cursor: pointer; }
+    .settings { margin-top: 14px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+    .settings > summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; cursor: pointer; list-style: none; font-size: 13px; font-weight: 600; }
+    .settings > summary::-webkit-details-marker { display: none; }
+    .settings > summary::after { content: "+"; color: var(--muted); font-size: 17px; }
+    .settings[open] > summary::after { content: "−"; }
+    .settings-summary { margin-left: auto; font-weight: 400; font-size: 11px; color: var(--muted); }
+    .settings .switch-modes { margin: 0 16px 14px; }
+    .settings .rotation-options { margin: 0 16px 16px; }
+    .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+    .eyebrow { display: flex; align-items: center; gap: 7px; margin: 0 0 8px; font-size: 11px; font-weight: 650; letter-spacing: 1.9px; color: var(--color-text-secondary, var(--muted)); }
+    .eyebrow svg { width: 16px; height: 16px; color: var(--accent); }
+    h1 { margin: 0; font-size: 27px; line-height: 1.25; font-weight: 650; letter-spacing: -.5px; }
+    .subtitle { margin: 9px 0 0; font-size: 13px; color: var(--color-text-secondary, var(--muted)); line-height: 1.7; }
+    .button { display: inline-flex; gap: 7px; align-items: center; justify-content: center; min-height: 38px; padding: 9px 13px; border: 1px solid var(--color-border-primary, var(--border)); border-radius: 10px; color: inherit; background: var(--color-background-primary, var(--surface)); font-size: 12px; font-weight: 600; white-space: nowrap; }
+    .button svg { width: 16px; height: 16px; flex: 0 0 auto; }
+    .button:hover:not(:disabled) { border-color: var(--accent); }
+    .button.primary { color: #fff; background: #0f8b74; border-color: #0f8b74; }
+    .button.primary:hover:not(:disabled) { background: #097763; }
+    .button.ghost { background: transparent; }
+    .button.danger { color: var(--danger); }
+    .current { position: relative; overflow: hidden; border: 1px solid var(--color-border-primary, var(--border)); border-radius: var(--radius); background: var(--color-background-primary, var(--surface)); padding: 22px; }
+    .current::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--accent); }
+    .section-label { margin: 0; font-size: 11px; letter-spacing: .4px; color: var(--color-text-secondary, var(--muted)); font-weight: 600; }
+    .current-row { display: flex; align-items: center; gap: 13px; margin-top: 15px; }
+    .avatar { width: 44px; height: 44px; border-radius: 14px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 19px; font-weight: 650; flex: 0 0 auto; }
+    .avatar svg { width: 23px; height: 23px; }
+    .current-detail { flex: 1; min-width: 0; }
+    .current-name { margin: 0; font-size: 17px; font-weight: 620; overflow-wrap: anywhere; }
+    .current-caption { margin: 5px 0 0; color: var(--color-text-secondary, var(--muted)); font-size: 11px; line-height: 1.5; }
+    .badge { padding: 5px 8px; border-radius: 6px; background: var(--soft); font-size: 10px; font-weight: 650; white-space: nowrap; }
+    .badge.current-badge { color: var(--accent); background: var(--accent-soft); }
+    .current-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid var(--color-border-primary, var(--border)); margin-top: 18px; padding-top: 14px; }
+    .privacy { display: flex; align-items: center; gap: 6px; color: var(--color-text-secondary, var(--muted)); font-size: 11px; line-height: 1.6; }
+    .privacy svg { width: 14px; height: 14px; flex: 0 0 auto; }
+    .notice { display: flex; align-items: flex-start; gap: 10px; border-radius: 12px; background: var(--warning-soft); color: var(--warning); padding: 14px; margin-top: 16px; font-size: 12px; line-height: 1.75; }
+    .notice svg { flex: 0 0 auto; width: 18px; height: 18px; margin-top: 2px; }
+    .notice strong { display: block; font-weight: 650; }
+    .notice.error { background: var(--danger-soft); color: var(--danger); }
+    .notice .notice-main { flex: 1; min-width: 0; }
+    .notice .button { margin-top: 8px; border-color: currentColor; background: transparent; color: inherit; }
+    .editor { margin-top: 16px; padding: 19px; background: var(--color-background-primary, var(--surface)); border: 1px solid var(--accent); border-radius: 14px; }
+    .editor-heading { margin: 0; font-size: 15px; font-weight: 650; }
+    .editor-caption { margin: 7px 0 15px; font-size: 12px; line-height: 1.75; color: var(--color-text-secondary, var(--muted)); }
+    .editor label { display: block; font-size: 11px; font-weight: 600; margin-bottom: 7px; }
+    .editor input { display: block; width: 100%; border: 1px solid var(--color-border-primary, var(--border)); border-radius: 9px; padding: 11px 12px; background: var(--color-background-secondary, var(--soft)); color: inherit; font-size: 13px; }
+    .editor-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    .input-error { margin: 7px 0 0; font-size: 11px; color: var(--danger); }
+    .saved-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 26px 0 12px; }
+    .saved-heading h2 { font-size: 14px; font-weight: 650; margin: 0; }
+    .count { font-weight: 400; color: var(--color-text-secondary, var(--muted)); font-size: 12px; margin-left: 6px; }
+    .refresh { border: 0; color: var(--color-text-secondary, var(--muted)); background: transparent; padding: 4px 0 4px 8px; display: inline-flex; align-items: center; gap: 5px; font-size: 11px; }
+    .refresh svg { width: 13px; height: 13px; }
+    .accounts { display: grid; gap: 9px; }
+    .account { display: flex; gap: 12px; align-items: center; border: 1px solid var(--color-border-primary, var(--border)); border-radius: 13px; background: var(--color-background-primary, var(--surface)); padding: 15px; }
+    .account.selected { border-color: color-mix(in srgb, var(--accent) 42%, var(--border)); }
+    .account .avatar { width: 38px; height: 38px; border-radius: 11px; font-size: 15px; }
+    .account-info { min-width: 0; flex: 1; }
+    .account-title { display: flex; flex-wrap: wrap; align-items: center; gap: 7px; }
+    .account-label { font-size: 13px; font-weight: 650; overflow-wrap: anywhere; }
+    .account-meta { margin: 5px 0 0; font-size: 11px; color: var(--color-text-secondary, var(--muted)); overflow-wrap: anywhere; }
+    .account-profile { margin: 5px 0 0; font-size: 12px; line-height: 1.7; overflow-wrap: anywhere; }
+    .avatar img { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; }
+    .usage-caption { margin: -3px 0 14px; font-size: 11px; line-height: 1.7; color: var(--muted); }
+    .usage-windows { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 10px; margin-top: 13px; }
+    .usage-window { min-width: 0; background: var(--soft); border-radius: 8px; padding: 9px 10px; font-size: 10px; }
+    .usage-label { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 3px 8px; line-height: 1.6; overflow-wrap: anywhere; }
+    .usage-track { height: 5px; background: var(--border); border-radius: 4px; overflow: hidden; margin: 7px 0; }
+    .usage-fill { height: 100%; background: var(--accent); border-radius: inherit; }
+    .usage-fill.high { background: var(--danger); }
+    .usage-reset, .usage-updated { color: var(--muted); font-size: 10px; line-height: 1.7; margin: 6px 0 0; }
+    .usage-updated.stale { color: var(--warning); }
+    .resets { margin-top: 11px; border-top: 1px solid var(--border); padding-top: 9px; font-size: 11px; line-height: 1.8; }
+    .resets summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+    .reset-card { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 7px; padding: 9px 0; border-bottom: 1px solid var(--border); }
+    .reset-card p { margin: 0; font-size: 10px; color: var(--muted); overflow-wrap: anywhere; }
+    .reset-card .button { min-height: 30px; padding: 6px 9px; font-size: 11px; }
+    .reset-warning { color: var(--warning); }
+    .reset-confirm { border-color: var(--warning); }
+    .reset-confirm .editor-caption { white-space: pre-line; overflow-wrap: anywhere; }
+    .rotation-options { margin-top: 15px; padding: 15px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+    .rotation-toggle { display: flex; align-items: center; gap: 9px; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .rotation-toggle input { width: 17px; height: 17px; accent-color: var(--accent); }
+    .rotation-options p { margin: 6px 0 0 26px; color: var(--muted); font-size: 11px; line-height: 1.8; overflow-wrap: anywhere; }
+    .switch-modes { margin: 16px 0 0; padding: 16px 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+    .switch-modes legend { padding: 0 5px; font-size: 12px; font-weight: 650; }
+    .switch-modes label { display: flex; align-items: center; gap: 8px; margin: 7px 0; font-size: 12px; }
+    .switch-modes input { accent-color: var(--accent); }
+    .switch-modes p { margin: 9px 0 0; font-size: 11px; line-height: 1.8; color: var(--muted); }
+    .account:has(.usage-windows) { align-items: flex-start; }
+    .account-actions { display: flex; gap: 5px; align-items: center; flex: 0 0 auto; flex-wrap: wrap; justify-content: flex-end; }
+    .rename { padding: 7px; min-height: 33px; border-color: transparent; color: var(--color-text-secondary, var(--muted)); background: transparent; }
+    .account-actions .switch { min-height: 33px; padding: 7px 10px; font-size: 11px; }
+    .empty { text-align: center; padding: 32px 18px; border: 1px dashed var(--color-border-primary, var(--border)); border-radius: 14px; background: var(--color-background-primary, var(--surface)); }
+    .empty svg { width: 31px; height: 31px; color: var(--muted); opacity: .65; }
+    .empty strong { display: block; font-size: 13px; font-weight: 600; margin-top: 10px; }
+    .empty p { font-size: 12px; color: var(--color-text-secondary, var(--muted)); line-height: 1.8; margin: 7px 0 0; }
+    .preferences { display: flex; align-items: center; gap: 7px; margin: 15px 0 0; font-size: 11px; color: var(--color-text-secondary, var(--muted)); }
+    .preferences input { accent-color: #0f8b74; width: 14px; height: 14px; margin: 0; }
+    .status { display: flex; align-items: flex-start; gap: 8px; min-height: 18px; margin-top: 20px; font-size: 11px; line-height: 1.8; color: var(--color-text-secondary, var(--muted)); }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); margin-top: 7px; flex: 0 0 auto; }
+    .status.error { color: var(--danger); }
+    .status.error .dot { background: var(--danger); }
+    .help { border-top: 1px solid var(--color-border-primary, var(--border)); margin-top: 21px; padding-top: 15px; color: var(--color-text-secondary, var(--muted)); font-size: 11px; line-height: 1.9; }
+    .help summary { cursor: pointer; font-weight: 500; }
+    .help p { margin: 7px 0 0; }
+    .help code { font: inherit; color: var(--color-text-primary, var(--ink)); }
+    @media (max-width: 490px) {
+      .app { padding: 19px 15px; }
+      .header { gap: 11px; }
+      .header { flex-wrap: wrap; }
+      .header-actions { margin-left: auto; }
+      .language-select { max-width: 130px; }
+      h1 { font-size: 23px; }
+      .header .button { padding: 8px 10px; }
+      .current { padding: 18px; }
+      .current-footer { flex-wrap: wrap; }
+      .account { display: grid; grid-template-columns: 38px minmax(0,1fr); gap: 9px; padding: 12px; }
+      .account > .avatar { grid-column: 1; grid-row: 1; }
+      .account-info { grid-column: 2; grid-row: 1; }
+      .usage-windows { grid-template-columns: minmax(0,1fr); }
+      .account-actions { grid-column: 2; grid-row: 2; justify-content: flex-end; margin-left: 0; }
+      .account-actions { flex-wrap: wrap; max-width: 100%; }
+      .account-actions .button { white-space: normal; text-align: center; }
+      .account:not(.has-avatar) { grid-template-columns: minmax(0,1fr); }
+      .account:not(.has-avatar) .account-info, .account:not(.has-avatar) .account-actions { grid-column: 1; }
+      .current-row { flex-wrap: wrap; gap: 10px; }
+      .current-detail { flex-basis: calc(100% - 54px); }
+      .current-row > .badge { margin-left: 54px; }
+      .notice { padding: 12px; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+  </style>
+</head>
+<body>
+<main class="app" id="app">
+  <header class="header">
+    <div>
+      <p class="eyebrow"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m7 7-5 5 5 5m10-10 5 5-5 5m-3-13-4 16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg> CODEX · LOCAL ACCOUNTS</p>
+      <h1 data-i18n="账号切换">账号切换</h1>
+      <p class="subtitle" data-i18n="你的账号，保存在这台电脑。">你的账号，保存在这台电脑。</p>
+    </div>
+    <div class="header-actions">
+      <label class="visually-hidden" for="language-select" data-i18n="语言">语言</label>
+      <select class="language-select" id="language-select" aria-label="语言">
+        <option value="zh-CN">简体中文</option><option value="zh-TW">繁體中文</option><option value="en">English</option><option value="ja">日本語</option><option value="ko">한국어</option><option value="es">Español</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="pt-BR">Português</option><option value="ru">Русский</option>
+      </select>
+      <button class="button primary" id="add-account" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span data-i18n="添加账号">添加账号</span></button>
+    </div>
+  </header>
+
+  <section class="current" aria-labelledby="current-heading">
+    <h2 class="section-label" id="current-heading"><span data-i18n="当前认证缓存">当前认证缓存</span></h2>
+    <div class="current-row">
+      <div class="avatar" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="8" r="3.5" stroke="currentColor" stroke-width="1.6"/><path d="M5 20v-1a7 7 0 0 1 14 0v1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></div>
+      <div class="current-detail"><p class="current-name" id="current-name"><span data-i18n="正在连接…">正在连接…</span></p><p class="current-caption" id="current-caption"><span data-i18n="等待本机账号库返回脱敏身份">等待本机账号库返回脱敏身份</span></p></div>
+      <span class="badge" id="current-plan" hidden></span>
+    </div>
+    <div class="current-footer">
+      <span class="privacy"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6l8-3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="m8.5 12 2.4 2.4 4.6-4.8" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="本机加密保存">本机加密保存</span></span>
+      <button class="button ghost" id="capture-current" disabled><span data-i18n="保存当前账号">保存当前账号</span></button>
+    </div>
+  </section>
+
+  <section class="rotation-options" aria-labelledby="rotation-label">
+    <label class="rotation-toggle" id="rotation-label"><input type="checkbox" role="switch" id="auto-rotation" disabled><span data-i18n="额度耗尽自动轮换">额度耗尽自动轮换</span></label>
+    <p id="rotation-caption"><span data-i18n="默认关闭。开启后，在同一任务中自动换用有额度且支持当前模型的已保存账号。">默认关闭。开启后，在同一任务中自动换用有额度且支持当前模型的已保存账号。</span></p>
+    <p id="rotation-last" hidden></p>
+  </section>
+
+  <details class="settings" id="settings">
+  <summary><span data-i18n="设置与启动">设置与启动</span><span class="settings-summary" id="settings-summary"></span></summary>
+  <fieldset class="switch-modes">
+    <legend data-i18n="切换方式">切换方式</legend>
+    <label><input type="radio" name="switch-mode" id="mode-subscription" value="subscription" checked><span data-i18n="仅切换模型订阅 · 无需重启">仅切换模型订阅 · 无需重启</span></label>
+    <label><input type="radio" name="switch-mode" id="mode-desktop" value="desktop"><span data-i18n="同步切换桌面登录 · 正常退出后生效">同步切换桌面登录 · 正常退出后生效</span></label>
+    <p id="mode-caption"><span data-i18n="选择方式后，再点击具体账号。更改此选项不会立即切换。">选择方式后，再点击具体账号。更改此选项不会立即切换。</span></p>
+  </fieldset>
+
+  <section class="rotation-options" aria-labelledby="startup-heading">
+    <strong id="startup-heading" data-i18n="普通启动">普通启动</strong>
+    <p id="startup-description" data-i18n="从常用入口启动，自动接入账号切换。">从常用入口启动，自动接入账号切换。</p>
+    <p id="startup-status"><span data-i18n="正在读取组件状态…">正在读取组件状态…</span></p>
+    <div class="editor-actions"><button class="button" id="startup-install" data-i18n="安装普通启动" disabled>安装普通启动</button><button class="button ghost" id="startup-uninstall" data-i18n="恢复原版启动" disabled>恢复原版启动</button></div>
+    <div id="startup-confirm" hidden>
+      <p data-i18n="需要管理员确认。对所有 Windows 用户生效，账号数据各自隔离。准备完成后正常退出 Codex，组件会自动重开。">需要管理员确认。对所有 Windows 用户生效，账号数据各自隔离。准备完成后正常退出 Codex，组件会自动重开。</p>
+      <div class="editor-actions"><button class="button primary" id="startup-install-confirm" data-i18n="确认安装">确认安装</button><button class="button ghost" id="startup-cancel" data-i18n="取消">取消</button></div>
+    </div>
+  </section>
+  </details>
+
+  <section class="notice error" id="desktop-quota-notice" hidden aria-live="polite">
+    <div class="notice-main"><strong><span data-i18n="桌面登录账号额度已耗尽">桌面登录账号额度已耗尽</span></strong><span id="desktop-quota-message"></span><p class="usage-reset" id="desktop-quota-updated"></p></div>
+  </section>
+
+  <section class="notice" id="desktop-switch-notice" hidden aria-live="polite">
+    <div class="notice-main"><strong id="desktop-switch-title"></strong><span id="desktop-switch-message"></span><div><button class="button" id="cancel-desktop-switch" disabled><span data-i18n="取消同步切换">取消同步切换</span></button></div></div>
+  </section>
+
+  <section class="notice" id="host-notice" hidden aria-live="polite">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v5m0 3v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <div class="notice-main"><strong><span data-i18n="通过对话也能管理账号">通过对话也能管理账号</span></strong><span id="host-notice-text"></span></div>
+  </section>
+
+  <section class="notice" id="routing-notice" hidden aria-live="polite">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 8v5m0 3v.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    <div class="notice-main"><strong id="routing-title"></strong><span id="routing-message"></span></div>
+  </section>
+
+  <section class="notice" id="pending-notice" hidden aria-live="polite">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="notice-main"><strong id="pending-title"></strong><span id="pending-message"></span><div><button class="button" id="cancel-switch" disabled><span data-i18n="取消待切换">取消待切换</span></button></div></div>
+  </section>
+
+  <section class="notice" id="login-notice" hidden aria-live="polite">
+    <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2" stroke="currentColor" stroke-width="1.6"/><path d="M8 21h8m-4-3v3m-2-13 4 3-4 3" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <div class="notice-main"><strong id="login-title"></strong><span id="login-message"></span><div><button class="button" id="cancel-login" disabled><span data-i18n="取消添加">取消添加</span></button></div></div>
+  </section>
+
+  <form class="editor" id="editor" hidden aria-labelledby="editor-heading" novalidate>
+    <h2 class="editor-heading" id="editor-heading"></h2>
+    <p class="editor-caption" id="editor-caption"></p>
+    <label for="account-label"><span data-i18n="账号名称">账号名称</span></label>
+    <input id="account-label" type="text" required maxlength="60" placeholder="例如：个人号、工作号" autocomplete="off" aria-describedby="label-error">
+    <p class="input-error" id="label-error" hidden></p>
+    <div class="editor-actions"><button type="button" class="button ghost" id="editor-cancel"><span data-i18n="取消">取消</span></button><button type="submit" class="button primary" id="editor-submit"><span data-i18n="保存">保存</span></button></div>
+  </form>
+
+  <section class="editor reset-confirm" id="reset-confirm" hidden role="region" aria-labelledby="reset-heading" aria-live="polite">
+    <h2 class="editor-heading" id="reset-heading"><span data-i18n="确认使用重置卡">确认使用重置卡</span></h2>
+    <p class="editor-caption" id="reset-description"></p>
+    <p class="input-error" id="reset-error" hidden></p>
+    <div class="editor-actions"><button type="button" class="button ghost" id="reset-cancel"><span data-i18n="取消">取消</span></button><button type="button" class="button primary" id="reset-submit"><span data-i18n="确认使用 1 张">确认使用 1 张</span></button></div>
+  </section>
+
+  <section class="editor" id="remove-confirm" hidden aria-labelledby="remove-heading">
+    <h2 class="editor-heading" id="remove-heading"><span data-i18n="移除已保存账号">移除已保存账号</span></h2>
+    <p class="editor-caption" id="remove-description"></p>
+    <div class="editor-actions"><button type="button" class="button ghost" id="remove-cancel"><span data-i18n="取消">取消</span></button><button type="button" class="button danger" id="remove-submit"><span data-i18n="确认移除">确认移除</span></button></div>
+  </section>
+
+  <section class="editor" id="desktop-switch-confirm" hidden aria-labelledby="desktop-switch-heading">
+    <h2 class="editor-heading" id="desktop-switch-heading"><span data-i18n="确认同步切换桌面登录">确认同步切换桌面登录</span></h2>
+    <p class="editor-caption" id="desktop-switch-description"></p>
+    <div class="editor-actions"><button type="button" class="button ghost" id="desktop-switch-cancel"><span data-i18n="取消">取消</span></button><button type="button" class="button primary" id="desktop-switch-submit"><span data-i18n="确认登记，退出后生效">确认登记，退出后生效</span></button></div>
+  </section>
+
+  <section aria-labelledby="saved-heading">
+    <div class="saved-heading"><h2 id="saved-heading"><span data-i18n="已保存账号">已保存账号</span><span class="count" id="account-count">—</span></h2><button class="refresh" id="refresh" disabled><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 6.7M20 4v7h-7" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span data-i18n="刷新">刷新</span></button></div>
+    <p class="usage-caption" id="usage-caption"><span data-i18n="套餐与额度每分钟自动更新；重置时间为北京时间。">套餐与额度每分钟自动更新；重置时间为北京时间。</span></p>
+    <p class="usage-caption" id="profile-caption" hidden></p>
+    <button type="button" class="button ghost" id="undo-remove" hidden><span data-i18n="撤销上次移除">撤销上次移除</span></button>
+    <div class="accounts" id="accounts"></div>
+    <div class="empty" id="empty"><svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="3" stroke="currentColor" stroke-width="1.5"/><path d="M3 9h18m-13 5h3m-3 3h6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg><strong id="empty-heading"><span data-i18n="正在读取账号库">正在读取账号库</span></strong><p id="empty-caption"><span data-i18n="只显示名称、脱敏邮箱与本地订阅标记。">只显示名称、脱敏邮箱与本地订阅标记。</span></p></div>
+    <label class="preferences" hidden><input type="checkbox" id="reopen" checked><span data-i18n="退出后切换完成后自动重新打开 Codex">退出后切换完成后自动重新打开 Codex</span></label>
+  </section>
+
+  <div class="status" id="status" role="status" aria-live="polite"><span class="dot" aria-hidden="true"></span><span id="status-message"><span data-i18n="正在连接插件宿主…">正在连接插件宿主…</span></span></div>
+  <details class="help"><summary data-i18n="帮助与说明">帮助与说明</summary><p data-i18n="切换订阅用于下一次模型请求，当前响应不会中断，桌面登录与历史保持不变。">切换订阅用于下一次模型请求，当前响应不会中断，桌面登录与历史保持不变。</p><p data-i18n="自动轮换仅在明确额度耗尽且尚未输出时接续；不会自动使用重置卡。">自动轮换仅在明确额度耗尽且尚未输出时接续；不会自动使用重置卡。</p><p data-i18n="普通启动组件对本机所有 Windows 用户生效，账号库各自隔离；官方客户端更新后请核对组件状态。">普通启动组件对本机所有 Windows 用户生效，账号库各自隔离；官方客户端更新后请核对组件状态。</p><p data-i18n="套餐和额度每分钟更新。日期以 UTC+8 显示；未提供的数据保持未知。">套餐和额度每分钟更新。日期以 UTC+8 显示；未提供的数据保持未知。</p></details>
+</main>
+<script>
+(() => {
+  "use strict";
+  // MCP Apps 2026-01-26: dependency-free ui/initialize handshake and tools/call.
+  // This page never reads files, sends network requests, logs results, or stores account data.
+  const VERSION = "2026-01-26";
+  const $ = (id) => document.getElementById(id);
+  const TRANSLATIONS = /*__ACCOUNT_TRANSLATIONS__*/{};
+  const languages = ["zh-CN","zh-TW","en","ja","ko","es","fr","de","pt-BR","ru"];
+  const languageKey = "codex-accounts-language";
+  function recognizedLanguage(value) {
+    if(typeof value!=="string")return null;
+    if(languages.includes(value))return value;
+    const normalized=value.toLowerCase();
+    if(normalized.startsWith("zh"))return /tw|hk|hant/.test(normalized)?"zh-TW":"zh-CN";
+    if(normalized.startsWith("pt"))return "pt-BR";
+    return languages.find(code=>code.toLowerCase()===normalized.split("-")[0])||null;
+  }
+  let language = (()=>{
+    let saved=null;try{saved=window.localStorage?.getItem(languageKey);}catch{}
+    return recognizedLanguage(saved)||recognizedLanguage(typeof navigator!=="undefined"?navigator.language:null)||"zh-CN";
+  })();
+  let languageChosen=false;
+  const locale=()=>language==="en"?"en-US":language;
+  function t(key,values={}) {
+    const entry=TRANSLATIONS[key];
+    const translated=entry?.[language]??(language==="zh-CN"?key:entry?.en??key);
+    return translated.replace(/\{(\w+)\}/g,(match,name)=>Object.prototype.hasOwnProperty.call(values,name)?String(values[name]):match);
+  }
+  function serverText(value,fallback) {
+    if(typeof value!=="string"||!value)return t(fallback);
+    if(Object.prototype.hasOwnProperty.call(TRANSLATIONS,value))return t(value);
+    // External server diagnostics and user content are never automatically translated.
+    // Known state labels remain localized when an older host returns a Chinese explanation.
+    return language!=="zh-CN"&&/[\u3400-\u9fff]/.test(value)?t(fallback):value;
+  }
+  function applyLanguage() {
+    document.documentElement.lang=language;
+    document.title=t("Codex 账号切换");
+    $("language-select").value=language;
+    $("language-select").setAttribute("aria-label",t("语言"));
+    for(const node of document.querySelectorAll?.("[data-i18n]")||[])node.textContent=t(node.getAttribute("data-i18n"));
+    $("account-label").placeholder=t("例如：个人号、工作号");
+    try{window.localStorage?.setItem(languageKey,language);}catch{}
+  }
+  const requests = new Map();
+  const terminal = new Set(["none", "completed", "complete", "done", "success", "succeeded", "failed", "error", "cancelled", "canceled", "expired"]);
+  const allowedStyles = new Set(["--color-background-primary", "--color-background-secondary", "--color-text-primary", "--color-text-secondary", "--color-border-primary", "--font-sans"]);
+  let nextId = 0, connected = false, canCall = false, disposed = false, busy = false, uncertain = false, receivedView = false;
+  let pollTimer = 0, polling = false, editor = null, localMessage = "", localError = false, hostContext = {};
+  let usageTimer = 0, usageRefreshing = false, resetPreview = null, removing = null, desktopTarget = null, switchMode = "subscription";
+  let profiles = new Map(), profileIds = "", profileRefreshing = false;
+  const avatarOrigins = new Set(["https://cdn.openai.com","https://images.openai.com","https://files.oaiusercontent.com","https://cdn.auth0.com",
+    "https://lh3.googleusercontent.com","https://lh4.googleusercontent.com","https://lh5.googleusercontent.com","https://lh6.googleusercontent.com"]);
+  let view = { accounts: [], current: null, pending: null, login: null, note: "" };
+
+  function text(value, limit = 600) {
+    return typeof value === "string" ? value.slice(0, limit).replace(/[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/g, "") : "";
+  }
+  function active(item) { return !!(item && text(item.id, 128) && !terminal.has(text(item.state, 40).toLowerCase())); }
+  function post(message) { if (!disposed && window.parent !== window) window.parent.postMessage(message, "*"); }
+  function notify(method, params) { post({ jsonrpc: "2.0", method, ...(params === undefined ? {} : { params }) }); }
+  function rpc(method, params, milliseconds = 45000) {
+    if (disposed || window.parent === window) return Promise.reject(new Error("unavailable"));
+    const id = "codex-accounts-" + (++nextId);
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => { requests.delete(id); reject(new Error("timeout")); }, milliseconds);
+      requests.set(id, { resolve, reject, timeout });
+      post({ jsonrpc: "2.0", id, method, params });
+    });
+  }
+  function showHostFallback(message) {
+    $("host-notice").hidden = false;
+    $("host-notice-text").textContent = message;
+  }
+  function status(message, error = false) {
+    localMessage = message; localError = error; renderStatus();
+  }
+  function renderStatus() {
+    $("status").classList.toggle("error", localError);
+    $("status").hidden=receivedView&&connected&&!localMessage&&!localError&&!uncertain&&!busy;
+    $("status-message").textContent = busy ? t("正在完成本机账号操作…") : serverText(localMessage||view.note,t("账号身份来自本地缓存，尚未验证服务端登录。"));
+  }
+  function acceptView(payload) {
+    if (!payload || typeof payload !== "object" || !Array.isArray(payload.accounts)) return false;
+    const preferred=recognizedLanguage(payload.languagePreference);
+    if(preferred&&!languageChosen&&preferred!==language){language=preferred;applyLanguage();}
+    view = {
+      accounts: payload.accounts.slice(0, 64).filter((entry) => entry && typeof entry === "object" && /^[0-9a-f]{64}$/.test(entry.id || "")).map((entry) => ({
+        id: entry.id, label: text(entry.label, 80), maskedEmail: text(entry.maskedEmail, 100), plan: text(entry.plan, 30),
+        planSource: entry.planSource === "server" ? "server" : "cached", usage: normalizeUsage(entry.usage),
+        resetCredits: normalizeResets(entry.resetCredits), resetPending: normalizeResetPreview(entry.resetPending), isCurrent: entry.isCurrent === true, isDesktop: entry.isDesktop === true
+      })),
+      current: payload.current && typeof payload.current === "object" ? { maskedEmail: text(payload.current.maskedEmail, 100), plan: text(payload.current.plan, 30), planSource: payload.current.planSource === "server" ? "server" : "cached" } : null,
+      subscriptionRouting: payload.subscriptionRouting === true,
+      startupIntegration:payload.startupIntegration&&typeof payload.startupIntegration==="object"?{state:text(payload.startupIntegration.state,40),message:text(payload.startupIntegration.message,500)}:null,
+      routingStartup: payload.routingStartup && typeof payload.routingStartup === "object" ? {
+        stage: text(payload.routingStartup.stage, 60), state: text(payload.routingStartup.state, 40),
+        message: text(payload.routingStartup.message), updatedAtUtc: text(payload.routingStartup.updatedAtUtc, 48)
+      } : null,
+      desktop: payload.desktop && typeof payload.desktop === "object" ? { maskedEmail: text(payload.desktop.maskedEmail, 100), plan: text(payload.desktop.plan, 30) } : null,
+      desktopQuota: payload.desktopQuota && typeof payload.desktopQuota === "object" ? {
+        state:text(payload.desktopQuota.state,40),message:text(payload.desktopQuota.message,500),updatedAtUtc:text(payload.desktopQuota.updatedAtUtc,48)
+      } : null,
+      desktopSwitchSupported: payload.desktopSwitchSupported === true,
+      desktopSwitch: payload.desktopSwitch && /^[0-9a-f]{32}$/.test(payload.desktopSwitch.id || "") ? {
+        id:payload.desktopSwitch.id, accountId:text(payload.desktopSwitch.accountId,64), label:text(payload.desktopSwitch.label,80),
+        state:text(payload.desktopSwitch.state,40), message:text(payload.desktopSwitch.message), expiresAtUtc:text(payload.desktopSwitch.expiresAtUtc,48)
+      } : null,
+      pending: payload.pending && typeof payload.pending === "object" ? { id: text(payload.pending.id, 128), label: text(payload.pending.label, 80), state: text(payload.pending.state, 40), message: text(payload.pending.message), createdAtUtc: text(payload.pending.createdAtUtc, 48) } : null,
+      login: payload.login && typeof payload.login === "object" ? { id: text(payload.login.id, 128), label: text(payload.login.label, 80), state: text(payload.login.state, 40), message: text(payload.login.message) } : null,
+      live: payload.live && typeof payload.live === "object" ? {
+        enabled: payload.live.enabled === true, connected: payload.live.connected === true,
+        busy: payload.live.busy !== false, message: text(payload.live.message),
+        nativeConnectionObserved: payload.live.nativeConnectionObserved === true,
+        removalSupported: payload.live.removalSupported === true,
+        autoRotationSupported: payload.live.autoRotationSupported === true, autoRotationEnabled: payload.live.autoRotationEnabled === true,
+        nativeInput: payload.live.nativeInput && typeof payload.live.nativeInput === "object" ? {
+          supported:payload.live.nativeInput.supported===true,connected:payload.live.nativeInput.connected===true,
+          frontendAdapted:payload.live.nativeInput.frontendAdapted===true,quotaAvailable:payload.live.nativeInput.quotaAvailable===true,
+          initialQuotaAdapted:payload.live.nativeInput.initialQuotaAdapted===true,workQuotaAdapted:payload.live.nativeInput.workQuotaAdapted===true,
+          state:text(payload.live.nativeInput.state,40),updatedAtUtc:text(payload.live.nativeInput.updatedAtUtc,48)
+        } : null,
+        lastAutoRotation: payload.live.lastAutoRotation && /^[0-9a-f]{64}$/.test(payload.live.lastAutoRotation.fromAccountId || "") && /^[0-9a-f]{64}$/.test(payload.live.lastAutoRotation.toAccountId || "") ? {
+          fromAccountId:payload.live.lastAutoRotation.fromAccountId,toAccountId:payload.live.lastAutoRotation.toAccountId,
+          state:text(payload.live.lastAutoRotation.state,30),occurredAtUtc:text(payload.live.lastAutoRotation.occurredAtUtc,48)
+        } : null,
+        failure: payload.live.failure && typeof payload.live.failure === "object" ? {
+          code: text(payload.live.failure.code, 60), message: text(payload.live.failure.message),
+          httpStatus: Number.isInteger(payload.live.failure.httpStatus) && payload.live.failure.httpStatus >= 100 && payload.live.failure.httpStatus <= 599 ? payload.live.failure.httpStatus : null
+        } : null,
+        verificationState: ["unverified", "accepted", "completed"].includes(payload.live.verificationState) ? payload.live.verificationState : "unverified",
+        lastCompletedAccountId: /^[0-9a-f]{64}$/.test(payload.live.lastCompletedAccountId || "") ? payload.live.lastCompletedAccountId : ""
+      } : null,
+      lastRemoved: payload.lastRemoved && /^[0-9a-f]{32}$/.test(payload.lastRemoved.removalId || "") ? {
+        removalId:payload.lastRemoved.removalId,label:text(payload.lastRemoved.label,80)
+      } : null,
+      note: text(payload.note, 700)
+    };
+    profiles = new Map([...profiles].filter(([id]) => view.accounts.some(account => account.id === id)));
+    receivedView = true; uncertain = false; render();
+    if (connected && canCall && profileIds !== view.accounts.map(account => account.id).sort().join(",")) void refreshProfiles();
+    return true;
+  }
+  function acceptResult(result) {
+    if (result?.isError === true) {
+      status(t("操作未完成，请查看对话中的工具提示；先刷新状态再继续。"), true);
+      return false;
+    }
+    return acceptView(result?.structuredContent);
+  }
+  function applyContext(update) {
+    if (!update || typeof update !== "object") return;
+    hostContext = { ...hostContext, ...update };
+    if (hostContext.theme === "dark" || hostContext.theme === "light") {
+      document.documentElement.dataset.theme = hostContext.theme;
+      document.documentElement.style.colorScheme = hostContext.theme;
+    }
+    const variables = update.styles?.variables;
+    if (variables && typeof variables === "object") {
+      for (const [name, value] of Object.entries(variables)) {
+        if (allowedStyles.has(name) && typeof value === "string" && value.length <= 300)
+          document.documentElement.style.setProperty(name, value);
+      }
+    }
+  }
+  function cleanup() {
+    disposed = true; connected = false; canCall = false;
+    clearInterval(pollTimer);
+    clearInterval(usageTimer);
+    resizeObserver?.disconnect();
+    for (const request of requests.values()) { clearTimeout(request.timeout); request.reject(new Error("closed")); }
+    requests.clear();
+    // Closing the panel must not cancel the explicitly requested deferred switch.
+  }
+
+  window.addEventListener("message", (event) => {
+    if (event.source !== window.parent || disposed) return;
+    const message = event.data;
+    if (!message || typeof message !== "object" || message.jsonrpc !== "2.0") return;
+    if (message.id !== undefined && requests.has(message.id) && message.method === undefined) {
+      const request = requests.get(message.id); requests.delete(message.id); clearTimeout(request.timeout);
+      if (message.error) request.reject(new Error("host-error")); else request.resolve(message.result);
+      return;
+    }
+    if (message.method === "ui/notifications/tool-result") {
+      if (acceptResult(message.params)) { localMessage = ""; localError = false; renderStatus(); }
+    } else if (message.method === "ui/notifications/host-context-changed") {
+      applyContext(message.params);
+    } else if (message.method === "ui/notifications/tool-cancelled") {
+      status(t("宿主取消了这次工具调用。已登记的待切换任务请单独查询状态。"));
+    } else if (message.method === "ui/resource-teardown" && message.id !== undefined) {
+      post({ jsonrpc: "2.0", id: message.id, result: {} }); cleanup();
+    } else if (message.method === "ping" && message.id !== undefined) {
+      post({ jsonrpc: "2.0", id: message.id, result: {} });
+    } else if (message.id !== undefined && message.method) {
+      post({ jsonrpc: "2.0", id: message.id, error: { code: -32601, message: t("面板不提供此方法。") } });
+    }
+  });
+
+  async function call(name, argumentsValue, mutation = false, quiet = false) {
+    if (!connected || !canCall || disposed) { if (!quiet) status(t("宿主尚未连接，请在对话中使用账号工具。"), true); return false; }
+    if (mutation && (busy || uncertain)) return false;
+    if (mutation) { busy = true; render(); }
+    try {
+      const result = await rpc("tools/call", { name, arguments: argumentsValue });
+      const accepted = acceptResult(result);
+      if (accepted) { localMessage = ""; localError = false; renderStatus(); }
+      else { uncertain = true; status(t("操作结果尚未确认。请先刷新已有状态，避免重复提交。"), true); }
+      return accepted;
+    } catch (error) {
+      if (disposed) return false;
+      uncertain = true;
+      status(error?.message === "timeout" ? t("操作超时，结果尚未确认。请先刷新状态，避免重复提交。") : t("连接未完成，状态尚未更新。请刷新，或在对话中查询账号工具。"), true);
+      return false;
+    } finally {
+      if (mutation) busy = false;
+      if (!disposed) render();
+    }
+  }
+
+  function button(label, css, handler) {
+    const element = document.createElement("button"); element.type = "button"; element.className = css; element.textContent = label;
+    element.addEventListener("click", handler); return element;
+  }
+  function render() {
+    const allowed = connected && canCall && !busy && !uncertain;
+    const desktopWaiting = active(view.desktopSwitch);
+    const switching = active(view.pending) || desktopWaiting, loggingIn = active(view.login);
+    const desktopMode = switchMode === "desktop";
+    const nativeInput=view.live?.nativeInput;
+    const nativeInputReady=nativeInput?.connected && nativeInput.frontendAdapted && nativeInput.initialQuotaAdapted && nativeInput.workQuotaAdapted && nativeInput.updatedAtUtc &&
+      Date.now()-new Date(nativeInput.updatedAtUtc).getTime()<15000;
+    const routingReady = view.subscriptionRouting && view.live?.enabled === true && view.live?.connected === true && view.live?.nativeConnectionObserved === true;
+    const selected = view.accounts.find(account => account.isCurrent);
+    const requestCompleted = routingReady && selected && view.live.verificationState === "completed" && view.live.lastCompletedAccountId === selected.id;
+    $("settings-summary").textContent=view.startupIntegration?.state==="active"?t("普通启动已启用"):t("偏好设置");
+    $("add-account").disabled = !allowed || loggingIn || switching;
+    $("capture-current").disabled = !allowed || !view.current || switching;
+    $("refresh").disabled = !connected || !canCall || busy || usageRefreshing;
+    $("usage-caption").textContent = usageRefreshing ? t("正在向官方查询套餐与额度…") : t("套餐与额度每分钟自动更新；重置时间为北京时间。");
+    $("profile-caption").hidden = true;
+    $("cancel-switch").disabled = !allowed || !active(view.pending);
+    $("cancel-switch").hidden = !active(view.pending);
+    $("cancel-login").disabled = !allowed || !loggingIn;
+    $("cancel-login").hidden = !loggingIn;
+    $("reopen").disabled = busy || switching;
+    $("reopen").parentElement.hidden = true;
+    $("editor-submit").disabled = !allowed;
+    $("editor-cancel").disabled = busy;
+    $("account-label").disabled = busy;
+    $("reset-cancel").disabled = busy;
+    $("reset-submit").disabled = !allowed || !resetPreview;
+    $("remove-submit").disabled = !allowed || !removing;
+    $("remove-cancel").disabled = busy;
+    $("undo-remove").hidden = !view.lastRemoved;
+    $("undo-remove").disabled = !allowed;
+    $("mode-subscription").checked = !desktopMode;
+    $("mode-desktop").checked = desktopMode;
+    $("mode-subscription").disabled = !allowed || switching;
+    $("mode-desktop").disabled = !allowed || switching || !view.desktopSwitchSupported;
+    $("mode-caption").textContent = desktopMode
+      ? t("确认账号后登记，正常退出全部客户端，再在 15 分钟内从「Codex（订阅切换）」打开。桌面账号、账号绑定的历史与插件连接会随之改变；不会强制退出。")
+      : nativeInputReady ? t("已接入原生本地输入框。按实际推理订阅额度判断发送，桌面登录、历史和插件连接保留；忙碌、权限及云端聊天的原有检查仍保留。")
+      : nativeInput?.state==="incompatible" ? t("当前官方前端版本尚未通过适配核验，原生发送检查保持原样。没有修改安装文件；可使用普通图标恢复。")
+      : nativeInput?.frontendAdapted || nativeInput?.state==="partial" ? t("原生发送适配只覆盖了部分检查，尚不能保证新消息可发送。需加载 0.12.0 的完整本地额度适配；已有请求完成不代表发送按钮已恢复。")
+      : t("保留桌面登录、历史与插件连接。原生发送适配尚未加载；请正常退出全部 Codex，再从更新后的「Codex（订阅切换）」启动。仅有模型转发连接不能证明原生发送已接入。");
+    $("desktop-switch-submit").disabled = !allowed || !desktopTarget || switching || loggingIn;
+    $("desktop-switch-cancel").disabled = busy;
+    $("desktop-switch-notice").hidden = !desktopWaiting;
+    $("desktop-switch-title").textContent = t("同步切换桌面登录待生效 · ") + (view.desktopSwitch?.label || t("所选账号"));
+    $("desktop-switch-message").textContent = [serverText(view.desktopSwitch?.message,t("保存任务并正常退出后生效，桌面历史与连接会随账号变化。")), view.desktopSwitch?.expiresAtUtc ? t("确认有效至：") + displayTime(view.desktopSwitch.expiresAtUtc) : ""].filter(Boolean).join(" ");
+    $("cancel-desktop-switch").disabled = !allowed || view.desktopSwitch?.state !== "queued";
+    $("desktop-quota-notice").hidden = view.desktopQuota?.state !== "desktop-exhausted" || !!(nativeInputReady && nativeInput.quotaAvailable);
+    $("desktop-quota-message").textContent = nativeInputReady
+      ? t("原生本地发送已按推理订阅核对，但目前没有确认可用的推理账号额度。请选择有额度的保存账号，或核对自动轮换设置。")
+      : view.desktopQuota?.message ? serverText(view.desktopQuota.message,t("发送适配未加载，请正常重开客户端。")) : "";
+    $("desktop-quota-updated").textContent = view.desktopQuota?.updatedAtUtc ? t("官方查询时间：") + displayTime(view.desktopQuota.updatedAtUtc) : "";
+    $("auto-rotation").checked = view.live?.autoRotationEnabled === true;
+    $("startup-status").textContent=t(({active:t("普通启动已启用"),preparing:t("正在准备运行文件…"),"waiting-exit":t("请保存任务并正常退出 Codex，随后自动重开。"),failed:t("安装未完成，请重试。"),removed:t("已恢复原版启动。"),"not-registered":t("启动注册缺失，请重新安装。")})[view.startupIntegration?.state]||t("普通启动组件尚未安装。"));
+    $("startup-install").disabled=!allowed||busy||uncertain||["preparing","waiting-exit"].includes(view.startupIntegration?.state);
+    $("startup-uninstall").disabled=!allowed||busy||uncertain||!["active","failed"].includes(view.startupIntegration?.state);
+    $("startup-install").hidden=view.startupIntegration?.state==="active";
+    $("auto-rotation").disabled = !allowed || !view.live?.autoRotationSupported;
+    $("rotation-caption").textContent = !view.live?.autoRotationSupported ? t("当前后台未加载此功能；正常重开更新后的「Codex（订阅切换）」后可设置。") :
+      view.live.autoRotationEnabled ? t("已开启。额度拒绝在后台处理，同一请求保留上下文、模型和推理设置后接续；每个账号最多尝试一次。") :
+      t("默认关闭。开启后自动换用有额度且支持当前模型的已保存账号，不使用重置卡。");
+    const rotationEvent=view.live?.lastAutoRotation;
+    $("rotation-last").hidden = !rotationEvent;
+    if(rotationEvent){const label=id=>view.accounts.find(account=>account.id===id)?.label || t("已保存账号");
+      $("rotation-last").textContent=t("最近轮换：") + label(rotationEvent.fromAccountId) + " → " + label(rotationEvent.toAccountId) + " · " +
+        ({selected:t("接续中"),accepted:t("已接受请求"),completed:t("响应已完成"),failed:t("接续未完成")}[rotationEvent.state] || t("待核对")) + " · " + displayTime(rotationEvent.occurredAtUtc);}
+
+    $("current-name").textContent = view.current?.maskedEmail || (receivedView ? view.subscriptionRouting ? t("订阅连接尚未核验") : t("暂无可读取的认证缓存") : connected ? t("等待账号数据…") : t("尚未连接账号库"));
+    $("current-heading").textContent = view.subscriptionRouting ? t("下一次模型请求使用的订阅") : t("当前认证缓存");
+    $("current-caption").textContent = view.subscriptionRouting ? t("桌面登录：") + (view.desktop?.maskedEmail || t("身份暂时未知")) + " · " + (requestCompleted ? t("最近一次模型请求已使用所选账号完成。") : t("仅已选择，尚未确认请求成功。")) : view.current ? t("这是当前桌面的认证缓存；订阅切换尚未接入。") : t("添加新账号，或保存已在 Codex 官方登录的账号");
+    $("capture-current").textContent = view.subscriptionRouting ? t("保存桌面账号") : t("保存当前账号");
+    $("current-plan").hidden = !view.current?.plan;
+    $("current-plan").textContent = view.current?.plan ? view.current.plan + (view.current.planSource === "server" ? "" : t(" · 缓存")) : "";
+    $("account-count").textContent = receivedView ? String(view.accounts.length) : "—";
+    $("empty").hidden = view.accounts.length > 0;
+    $("empty-heading").textContent = receivedView ? t("还没有保存账号") : connected ? t("正在读取账号库") : t("等待插件连接");
+    $("empty-caption").textContent = receivedView ? t("先保存当前账号，或添加一个由你在官方浏览器登录的新账号。") : t("本面板仅显示工具返回的脱敏身份，不会直接访问本机文件。");
+
+    const startup = view.routingStartup, failed = startup?.state === "failed";
+    const starting = !failed && (startup?.state === "starting" || (view.subscriptionRouting && !routingReady));
+    const routingFailure = view.live?.failure;
+    $("routing-notice").hidden = !receivedView || (routingReady && !routingFailure);
+    $("routing-notice").classList.toggle("error", !!routingFailure || failed || (view.subscriptionRouting && !routingReady));
+    $("routing-title").textContent = routingFailure ? t("最近一次请求未完成") : starting ? t("订阅切换正在启动") : failed ? t("订阅切换启动失败") : t("未接入订阅切换");
+    const guidance = starting ? t("尚未能切换订阅。请稍后点击刷新查看连接状态。") : t("当前窗口尚未能切换订阅。请结束任务并正常退出 Codex，再从桌面的「Codex（订阅切换）」打开。");
+    $("routing-message").textContent = routingFailure
+      ? [serverText(routingFailure.message,t(routingFailure.httpStatus===401?"请重新登录此账号。":"连接失败，请刷新后重试。")), routingFailure.httpStatus ? "HTTP " + routingFailure.httpStatus + "." : "", routingReady ? t("桌面连接已核验；空闲时可以选择其他账号。") : t("桌面连接尚未通过校验。"), routingFailure.code ? t("诊断：") + routingFailure.code : ""].filter(Boolean).join(" ")
+      : [...new Set([startup?.message?serverText(startup.message,guidance):"", guidance, startup?.updatedAtUtc ? t("状态时间：") + displayTime(startup.updatedAtUtc) : ""].filter(Boolean))].join(" ");
+
+    $("pending-notice").hidden = !active(view.pending);
+    $("pending-notice").classList.toggle("error", ["failed", "expired", "error"].includes(view.pending?.state));
+    $("pending-title").textContent = switching ? t("等待退出后切换 · ") + (view.pending?.label || t("所选账号")) : stateTitle(view.pending?.state, t("切换"));
+    $("pending-message").textContent = [view.pending?.createdAtUtc ? t("请求时间：") + displayTime(view.pending.createdAtUtc) + "." : "", serverText(view.pending?.message,t("请结束任务并正常退出所有 Codex / ChatGPT 客户端及 Codex 后台。当前会话账号仍未改变。")), !switching ? t("这是上次退出后切换的记录，不代表本次订阅选择成功。") : ""].filter(Boolean).join(" ");
+    $("login-notice").hidden = !loggingIn;
+    $("login-notice").classList.toggle("error", ["failed", "expired", "error"].includes(view.login?.state));
+    $("login-title").textContent = loggingIn ? t("请在官方浏览器手动登录 · ") + (view.login?.label || t("新账号")) : stateTitle(view.login?.state, t("添加账号"));
+    $("login-message").textContent = completed(view.login?.state) ? t("新账号已加密保存到本机账号库，尚未选择为模型请求的订阅；当前 Codex 登录未更改。") : serverText(view.login?.message,t("本面板不会输入密码或验证码。完成后，账号将加密保存在本机。"));
+
+    const list = $("accounts"); list.replaceChildren();
+    view.accounts.forEach((account) => {
+      const card = document.createElement("article"); card.className = "account" + (account.isCurrent ? " selected" : "");
+      const avatar = document.createElement("div"); avatar.className = "avatar"; avatar.setAttribute("aria-hidden", "true");
+      const profile=profiles.get(account.id);
+      avatar.hidden=!profile?.avatarUrl; card.classList.toggle("has-avatar",!!profile?.avatarUrl);
+      if (profile?.avatarUrl) {
+        const photo=document.createElement("img"); photo.alt=""; photo.referrerPolicy="no-referrer"; photo.loading="lazy";
+        photo.addEventListener("error", () => { avatar.hidden=true; avatar.replaceChildren(); card.classList.toggle("has-avatar",false); });
+        photo.src=profile.avatarUrl; avatar.append(photo);
+      }
+      const detail = document.createElement("div"); detail.className = "account-info";
+      const title = document.createElement("div"); title.className = "account-title";
+      const label = document.createElement("span"); label.className = "account-label"; label.textContent = account.label || t("未命名账号"); title.append(label);
+      if (account.isCurrent) { const badge = document.createElement("span"); badge.className = "badge current-badge"; badge.textContent = view.subscriptionRouting ? t("已选择") : view.live?.connected ? t("当前账号") : t("当前缓存"); title.append(badge); }
+      const meta = document.createElement("p"); meta.className = "account-meta"; meta.textContent = [account.maskedEmail,
+        account.planSource === "server" ? account.plan : t("缓存套餐：") + (account.plan || t("未知"))].filter(Boolean).join(" · ");
+      detail.append(title, meta);
+      if (profile?.displayName || profile?.username) {
+        const identity=document.createElement("p"); identity.className="account-profile";
+        identity.textContent=[profile.displayName ? t("名称：") + profile.displayName : "",profile.username ? t("用户名：") + profile.username : ""].filter(Boolean).join(" · ");
+        detail.append(identity);
+      }
+      renderUsage(detail, account.usage);
+      renderResets(detail, account, allowed);
+      const actions = document.createElement("div"); actions.className = "account-actions";
+      const rename = button(t("重命名"), "button rename", () => openEditor("rename", account)); rename.disabled = !allowed;
+      rename.setAttribute("aria-label", t("重命名") + " " + (account.label || t("账号")));
+      const remove = button(t("移除"), "button ghost danger", () => {
+        if (!allowed || account.isCurrent || account.isDesktop || switching || loggingIn || view.live?.busy && view.live?.enabled ||
+            view.live?.enabled && (!routingReady || !view.live.removalSupported) || account.resetPending) return;
+        removing = account.id;
+        $("remove-description").textContent = t("账号：") + account.label + "（" + account.maskedEmail + t("）\n从本机保存列表移除这条记录，保留加密副本供撤销。OpenAI 账号与订阅继续保留。");
+        $("remove-confirm").hidden = false; render(); $("remove-submit").focus();
+      });
+      remove.setAttribute("aria-label",t("移除") + " " + (account.label || t("账号")));
+      remove.disabled = !allowed || account.isCurrent || account.isDesktop || switching || loggingIn || !!account.resetPending ||
+        view.live?.enabled && (!routingReady || !view.live.removalSupported || view.live.busy);
+      remove.title = account.isDesktop ? t("该账号仍是桌面当前登录") : account.isCurrent ? t("先切换到另一个账号，再移除当前记录") : view.live?.enabled && !view.live.removalSupported ? t("正常重开后加载支持移除的新版后台") : t("从本机保存列表移除，可撤销");
+      const switchButton = button(desktopMode ? account.isDesktop ? t("桌面当前登录") : t("同步桌面登录") : !routingReady ? t("尚未接入") : account.isCurrent ? t("已选择") : t("切换订阅"), "button switch", () => {
+        if (!allowed || switching || loggingIn) return;
+        if (desktopMode) {
+          if (!view.desktopSwitchSupported || account.isDesktop) return;
+          desktopTarget = account.id;
+          $("desktop-switch-description").textContent = t("目标：") + account.label + "（" + account.maskedEmail + t("）\n将同步更换桌面登录与模型订阅。账号绑定的历史和插件连接会随账号变化。登记前与下次启动时都会向官方核对目标额度；当前登录不会立即更改。请保存任务并正常退出，再在 15 分钟内从「Codex（订阅切换）」打开。");
+          $("desktop-switch-confirm").hidden = false; render(); $("desktop-switch-submit").focus(); return;
+        }
+        // Never fall back to a disk/exit switch when subscription routing is unavailable.
+        if (!view.subscriptionRouting || view.live?.enabled !== true || view.live?.connected !== true || view.live?.nativeConnectionObserved !== true || view.live.busy || active(view.pending) || active(view.login)) return;
+        return call("accounts_select_subscription", { account_id: account.id }, true);
+      });
+      switchButton.disabled = !allowed || switching || loggingIn || (desktopMode
+        ? !view.desktopSwitchSupported || account.isDesktop
+        : !routingReady || account.isCurrent || view.live?.busy !== false);
+      actions.append(rename, remove, switchButton); card.append(avatar, detail, actions); list.append(card);
+    });
+    renderConfirmations();
+    renderStatus();
+  }
+  function renderConfirmations() {
+    const account=view.accounts.find(item=>item.id===removing);
+    if(account)$("remove-description").textContent=t("账号：")+account.label+"（"+account.maskedEmail+t("）\n从本机保存列表移除这条记录，保留加密副本供撤销。OpenAI 账号与订阅继续保留。");
+    const target=view.accounts.find(item=>item.id===desktopTarget);
+    if(target)$("desktop-switch-description").textContent=t("目标：")+target.label+"（"+target.maskedEmail+t("）\n将同步更换桌面登录与模型订阅。账号绑定的历史和插件连接会随账号变化。登记前与下次启动时都会向官方核对目标额度；当前登录不会立即更改。请保存任务并正常退出，再在 15 分钟内从「Codex（订阅切换）」打开。");
+    if(resetPreview){
+      const resetAccount=view.accounts.find(item=>item.id===resetPreview.accountId);
+      $("reset-heading").textContent=resetPreview.recovering?t("核对上次重置"):t("确认使用重置卡");
+      $("reset-submit").textContent=resetPreview.recovering?t("核对同一次操作"):t("确认使用 1 张");
+      if(resetAccount)$("reset-description").textContent=t("账号：")+resetAccount.label+"（"+resetAccount.maskedEmail+"）\n"+resetExpiry(resetPreview.card)+"\n"+serverText(resetPreview.message,resetPreview.recovering?t("结果未确认，请刷新并核对同一次操作。"):t("使用前需确认账号与卡片；不会自动消耗。"));
+    }
+  }
+  function safeAvatar(value) {
+    if (typeof value!=="string" || value.length>2048) return "";
+    try { const url=new URL(value); return avatarOrigins.has(url.origin) && !url.username && !url.password && !url.hash ? url.href : ""; }
+    catch { return ""; }
+  }
+  async function refreshProfiles() {
+    if (!connected || !canCall || disposed || profileRefreshing) return;
+    profileRefreshing=true;
+    profileIds=view.accounts.map(account=>account.id).sort().join(",");
+    try {
+      const result=await rpc("tools/call",{name:"accounts_profile_details",arguments:{}});
+      if (result?.isError || !Array.isArray(result?.structuredContent?.profiles)) throw new Error("unavailable");
+      const updated=new Map();
+      for (const entry of result.structuredContent.profiles.slice(0,64)) {
+        if (!view.accounts.some(account=>account.id===entry?.accountId) || entry.source!=="login-cache") continue;
+        const profile={displayName:text(entry.displayName,160),username:text(entry.username,160),avatarUrl:safeAvatar(entry.avatarUrl)};
+        if (profile.displayName || profile.username || profile.avatarUrl) updated.set(entry.accountId,profile);
+      }
+      profiles=updated;
+    } catch { profiles=new Map(); profileIds=""; }
+    finally { profileRefreshing=false; if(!disposed)render(); }
+  }
+  function chooseMode(mode) {
+    if (busy || uncertain || active(view.pending) || active(view.desktopSwitch)) return;
+    switchMode = mode; desktopTarget = null; $("desktop-switch-confirm").hidden = true; render();
+  }
+  $("mode-subscription").addEventListener("change", () => chooseMode("subscription"));
+  $("mode-desktop").addEventListener("change", () => { if (view.desktopSwitchSupported) chooseMode("desktop"); });
+  $("desktop-switch-cancel").addEventListener("click", () => { if (!busy) { desktopTarget=null; $("desktop-switch-confirm").hidden=true; render(); } });
+  $("desktop-switch-submit").addEventListener("click", async () => {
+    if (!desktopTarget || switchMode!=="desktop" || busy || uncertain || active(view.desktopSwitch)) return;
+    const target=desktopTarget;
+    if (await call("accounts_request_desktop_switch",{account_id:target,confirmed:true},true)) {
+      desktopTarget=null; $("desktop-switch-confirm").hidden=true;
+    }
+  });
+  $("cancel-desktop-switch").addEventListener("click", () => {
+    if (view.desktopSwitch?.state==="queued") return call("accounts_cancel_desktop_switch",{request_id:view.desktopSwitch.id},true);
+  });
+  function normalizeUsage(value) {
+    if (!value || typeof value !== "object") return null;
+    const window = (entry) => entry && typeof entry === "object" ? {
+      usedPercent: typeof entry.usedPercent === "number" && Number.isFinite(entry.usedPercent) && entry.usedPercent >= 0 && entry.usedPercent <= 1000 ? entry.usedPercent : null,
+      limitWindowSeconds: typeof entry.limitWindowSeconds === "number" && entry.limitWindowSeconds > 0 && entry.limitWindowSeconds <= 31536000 ? entry.limitWindowSeconds : null,
+      resetsAtUtc: text(entry.resetsAtUtc, 48)
+    } : null;
+    return { status: text(value.status, 40), stale: value.stale === true, message: text(value.message, 250),
+      updatedAtUtc: text(value.updatedAtUtc, 48), primary: window(value.primary), secondary: window(value.secondary), codeReview: window(value.codeReview) };
+  }
+  $("remove-cancel").addEventListener("click",() => { if (!busy) { removing = null; $("remove-confirm").hidden = true; render(); } });
+  $("remove-submit").addEventListener("click",async () => {
+    if (!removing || busy || uncertain) return;
+    if (await call("accounts_remove",{account_id:removing,confirmed:true},true)) { removing=null; $("remove-confirm").hidden=true; }
+  });
+  $("undo-remove").addEventListener("click",() => {
+    if (view.lastRemoved) return call("accounts_restore_removed",{removal_id:view.lastRemoved.removalId},true);
+  });
+  $("auto-rotation").addEventListener("change",async () => {
+    if(!view.live?.autoRotationSupported || busy || uncertain)return;
+    await call("accounts_set_auto_rotation",{enabled:$("auto-rotation").checked},true);
+  });
+  $("language-select").addEventListener("change",async()=>{
+    const next=recognizedLanguage($("language-select").value);if(!next)return;
+    language=next;languageChosen=true;applyLanguage();render();
+    renderEditorCopy();
+    if(!$("label-error").hidden)$("label-error").textContent=t("请输入 1 至 60 个字符的账号名称。");
+    if(connected&&canCall)try{
+      const result=await rpc("tools/call",{name:"accounts_set_language",arguments:{language}});
+      if(result?.isError)status(t("语言已切换，但偏好未保存。"),true);
+    }catch{status(t("语言已切换，但偏好未保存。"),true);}
+  });
+  $("startup-install").addEventListener("click",()=>{$("startup-confirm").hidden=false;});
+  $("startup-cancel").addEventListener("click",()=>{$("startup-confirm").hidden=true;});
+  $("startup-install-confirm").addEventListener("click",async()=>{if(!busy&&!uncertain){$("startup-confirm").hidden=true;await call("accounts_install_startup",{confirmed:true},true);}});
+  $("startup-uninstall").addEventListener("click",async()=>{if(!busy&&!uncertain&&window.confirm(t("恢复原版启动？账号记录和当前任务会保留。")))await call("accounts_uninstall_startup",{confirmed:true},true);});
+  function normalizeResetCard(card) {
+    if (!card || typeof card !== "object" || !/^[A-Za-z0-9_.:-]{1,256}$/.test(card.id || "")) return null;
+    return {id:card.id, status:["available","redeeming","redeemed"].includes(card.status)?card.status:"unknown",
+      resetType:card.resetType === "codex_rate_limits"?"codex_rate_limits":"unknown",
+      expiresAtUtc:text(card.expiresAtUtc,48), expiryKnown:card.expiryKnown === true};
+  }
+  function normalizeResets(value) {
+    if (!value || typeof value !== "object") return null;
+    return {status:text(value.status,30),stale:value.stale === true,
+      availableCount:Number.isSafeInteger(value.availableCount) && value.availableCount>=0 && value.availableCount<=1000000 ? value.availableCount:null,
+      cards:Array.isArray(value.cards)?value.cards.slice(0,64).map(normalizeResetCard).filter(Boolean):null,
+      updatedAtUtc:text(value.updatedAtUtc,48),message:text(value.message,250)};
+  }
+  function normalizeResetPreview(value) {
+    const card = normalizeResetCard(value?.card);
+    if (!card || !/^[0-9a-f]{64}$/.test(value?.accountId || "") || !/^[0-9a-f]{32}$/.test(value?.confirmationId || "")) return null;
+    return {accountId:value.accountId,confirmationId:value.confirmationId,card,confirmBeforeUtc:text(value.confirmBeforeUtc,48),
+      recovering:value.recovering === true,message:text(value.message,500)};
+  }
+  function resetExpiry(card) {
+    return !card.expiryKnown ? t("到期时间未提供") : card.expiresAtUtc ? t("到期：") + displayTime(card.expiresAtUtc) : t("官方标记无到期时间");
+  }
+  function renderResets(parent, account, allowed) {
+    const resets = account.resetCredits;
+    const block = document.createElement("details"); block.className = "resets";
+    const summary = document.createElement("summary");
+    summary.textContent = t("重置卡 · ") + (resets?.availableCount === null || !resets ? t("数量未知") : t("可用 ") + resets.availableCount + t(" 张"));
+    if (resets?.stale || resets?.status !== "ok") summary.textContent += t(" · 待更新");
+    block.append(summary);
+    if (account.resetPending) {
+      const pending = button(t("核对上次重置"), "button ghost reset-warning", () => openReset(account, account.resetPending.card));
+      pending.disabled = !allowed; block.append(pending); block.open = true;
+    }
+    for (const card of resets?.cards || []) {
+      const row = document.createElement("div"); row.className = "reset-card";
+      const info = document.createElement("div");
+      const expired = card.expiresAtUtc && new Date(card.expiresAtUtc).getTime() <= Date.now();
+      const title = document.createElement("strong"); title.textContent = t("Codex 额度重置 · ") +
+        (card.status === "redeemed" ? t("已使用") : card.status === "redeeming" ? t("处理中") : card.status === "available" ? expired ? t("已过期") : t("可用") : t("状态未知"));
+      const expiry = document.createElement("p"); expiry.textContent = resetExpiry(card); info.append(title,expiry); row.append(info);
+      if (card.status === "available" && card.resetType === "codex_rate_limits") {
+        const use = button(t("使用此卡"), "button ghost", () => openReset(account,card));
+        use.disabled = !allowed || resets.status !== "ok" || resets.stale || resets.availableCount <= 0 ||
+          !card.expiryKnown || !!expired || !!account.resetPending;
+        row.append(use);
+      }
+      block.append(row);
+    }
+    const note = document.createElement("p"); note.className = "usage-updated" + (resets?.stale ? " stale" : "");
+    note.textContent = !resets ? t("尚未查询官方重置卡。") : resets.stale || resets.status !== "ok" ? serverText(resets.message,t("查询暂不可用")) :
+      resets.cards && resets.cards.filter(card=>card.status === "available").length < resets.availableCount ? t("官方仅返回部分卡片详情；总次数以官方数量为准。") :
+      resets.availableCount === 0 ? t("官方查询：暂无可用重置卡。") : t("使用前需确认账号与卡片；不会自动消耗。");
+    if (resets?.updatedAtUtc) note.textContent += t(" 上次查询：") + displayTime(resets.updatedAtUtc);
+    block.append(note); parent.append(block);
+  }
+  async function openReset(account, card) {
+    if (!connected || !canCall || busy || uncertain) return;
+    busy = true; render();
+    try {
+      const result = await rpc("tools/call",{name:"accounts_prepare_reset",arguments:{account_id:account.id,credit_id:card.id}});
+      const preview = result?.isError !== true ? normalizeResetPreview(result?.structuredContent?.resetPreview) : null;
+      if (!preview || preview.accountId !== account.id || preview.card.id !== card.id) {
+        status(text(result?.content?.[0]?.text,250) || t("未能确认重置卡详情，请刷新后查看。"),true); return;
+      }
+      resetPreview = preview;
+      $("reset-heading").textContent = preview.recovering ? t("核对上次重置") : t("确认使用重置卡");
+      $("reset-description").textContent = t("账号：") + account.label + "（" + account.maskedEmail + "）\n" + resetExpiry(preview.card) + "\n" + preview.message;
+      $("reset-submit").textContent = preview.recovering ? t("核对同一次操作") : t("确认使用 1 张");
+      $("reset-error").hidden = true; $("reset-confirm").hidden = false;
+      $("reset-submit").focus();
+    } catch { status(t("重置详情连接未完成，没有提交使用请求。"),true); }
+    finally { busy = false; if (!disposed) render(); }
+  }
+  $("reset-cancel").addEventListener("click", () => { if (!busy) { resetPreview = null; $("reset-confirm").hidden = true; render(); } });
+  $("reset-submit").addEventListener("click", async () => {
+    if (!resetPreview || busy || uncertain || !connected || !canCall) return;
+    const preview = resetPreview; busy = true; render();
+    try {
+      const result = await rpc("tools/call",{name:"accounts_use_reset",arguments:{account_id:preview.accountId,confirmation_id:preview.confirmationId,confirmed:true}});
+      if (result?.isError || !acceptView(result?.structuredContent)) {
+        $("reset-error").textContent = text(result?.content?.[0]?.text,300) || t("结果未确认，请刷新并核对同一次操作。");
+        $("reset-error").hidden = false; return;
+      }
+      status(text(result.structuredContent.resetResult?.message,400) || t("重置结果已更新。"),result.structuredContent.resetResult?.confirmed !== true);
+      resetPreview = null; $("reset-confirm").hidden = true;
+    } catch {
+      $("reset-error").textContent = t("结果尚未确认；请刷新后核对上次操作。再次确认只会查询同一次兑换，不会自动新建兑换。");
+      $("reset-error").hidden = false;
+    } finally { busy = false; if (!disposed) render(); }
+  });
+  function usageWindowName(window, fallback) {
+    const seconds = window.limitWindowSeconds;
+    if (seconds === 604800) return t("每周额度");
+    if (seconds && seconds % 3600 === 0 && seconds < 86400) return t("{count} 小时额度",{count:seconds/3600});
+    if (seconds && seconds % 86400 === 0) return t("{count} 天额度",{count:seconds/86400});
+    return fallback;
+  }
+  function renderUsage(parent, usage) {
+    const updated = document.createElement("p"); updated.className = "usage-updated";
+    if (!usage) { updated.textContent = t("尚未查询官方套餐与额度。"); parent.append(updated); return; }
+    const windows = document.createElement("div"); windows.className = "usage-windows";
+    for (const [window, fallback] of [[usage.primary,t("主额度")],[usage.secondary,t("次额度")],[usage.codeReview,t("代码审查额度")]]) {
+      if (!window) continue;
+      const block = document.createElement("div"); block.className = "usage-window";
+      const labels = document.createElement("div"); labels.className = "usage-label";
+      const name = document.createElement("span"); name.textContent = fallback === t("代码审查额度") ? fallback : usageWindowName(window, fallback);
+      const remaining = document.createElement("strong");
+      remaining.textContent = window.usedPercent === null ? t("用量未提供") : t("剩余 {value}%",{value:Math.max(0,100-window.usedPercent).toLocaleString(locale(),{maximumFractionDigits:1})});
+      labels.append(name,remaining); block.append(labels);
+      if (window.usedPercent !== null) {
+        const track = document.createElement("div"); track.className = "usage-track";
+        track.setAttribute("role","progressbar"); track.setAttribute("aria-label",name.textContent + t("已用"));
+        track.setAttribute("aria-valuemin","0"); track.setAttribute("aria-valuemax","100");
+        track.setAttribute("aria-valuenow",String(Math.min(100,window.usedPercent)));
+        const fill = document.createElement("div"); fill.className = "usage-fill" + (window.usedPercent >= 85 ? " high" : "");
+        fill.style.width = Math.min(100,window.usedPercent) + "%"; track.append(fill); block.append(track);
+      }
+      const reset = document.createElement("p"); reset.className = "usage-reset";
+      reset.textContent = (window.usedPercent === null ? "" : t("已用 {value}%",{value:window.usedPercent.toLocaleString(locale(),{maximumFractionDigits:1})}) + " · ") +
+        (window.resetsAtUtc ? t("重置：") + displayTime(window.resetsAtUtc) : t("重置时间未提供"));
+      block.append(reset); windows.append(block);
+    }
+    if (windows.children.length) parent.append(windows);
+    else { const unknown = document.createElement("p"); unknown.className = "usage-reset"; unknown.textContent = t("官方暂未提供额度窗口。"); parent.append(unknown); }
+    updated.className += usage.stale || usage.status !== "ok" ? " stale" : "";
+    updated.textContent = [usage.stale || usage.status !== "ok" ? t("数据待更新 · ") + (usage.status==="reauth-required"?t("请重新登录此账号。"):serverText(usage.message,t("查询暂不可用"))) : "",
+      usage.updatedAtUtc ? t("上次更新：") + displayTime(usage.updatedAtUtc) : t("尚无成功查询记录")].filter(Boolean).join(" · ");
+    parent.append(updated);
+  }
+  function completed(state) { return ["completed", "complete", "done", "success", "succeeded"].includes(state); }
+  function displayTime(value) {
+    const time = new Date(value);
+    return Number.isFinite(time.getTime()) ? time.toLocaleString(locale(), { timeZone: "Asia/Shanghai", hour12: false }) + " (UTC+8)" : t("时间未知");
+  }
+  function stateTitle(state, operation) {
+    if (completed(state)) return operation === t("切换") ? t("上次退出后切换已写入缓存，登录仍待确认") : t("已保存到账号库，尚未切换");
+    if (["cancelled", "canceled"].includes(state)) return operation === t("切换") ? t("上次退出后切换已取消") : operation + t("已取消");
+    if (state === "expired") return operation === t("切换") ? t("上次退出后切换已过期") : operation + t("请求已过期");
+    if (["failed", "error"].includes(state)) return operation === t("切换") ? t("上次退出后切换失败") : operation + t("未完成");
+    return operation + t("状态已更新");
+  }
+  function openEditor(mode, account) {
+    if (!connected || !canCall || busy || uncertain) return;
+    editor = { mode, accountId: account?.id || "" };
+    const saved = view.accounts.find((entry) => entry.isCurrent);
+    renderEditorCopy();
+    $("account-label").value = mode === "rename" ? account.label : mode === "capture" ? saved?.label || t("当前账号") : "";
+    $("label-error").hidden = true; $("editor").hidden = false;
+    $("account-label").focus();
+  }
+  function renderEditorCopy() {
+    if(!editor)return;
+    const mode=editor.mode;
+    $("editor-heading").textContent=mode==="login"?t("添加一个账号"):mode==="capture"?t("保存当前账号"):t("重命名账号");
+    $("editor-caption").textContent=mode==="login"?t("给账号起一个方便识别的名称，然后在官方浏览器完成登录。当前 Codex 登录保持不变。"):mode==="capture"?t("将现有订阅登录加密保存到本机账号库，方便下次切换。"):t("仅更新本机账号库中的备注名称。");
+    $("editor-submit").textContent=mode==="login"?t("打开官方登录"):t("保存");
+  }
+  function closeEditor() { editor = null; $("editor").hidden = true; $("label-error").hidden = true; }
+  $("editor").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!editor || busy) return;
+    const label = $("account-label").value.trim();
+    if (!label || label.length > 60 || /[\u0000-\u001f\u007f]/.test(label)) {
+      $("label-error").textContent = t("请输入 1 至 60 个字符的账号名称。"); $("label-error").hidden = false; $("account-label").focus(); return;
+    }
+    const action = editor;
+    const name = action.mode === "login" ? "accounts_begin_login" : action.mode === "capture" ? "accounts_capture_current" : "accounts_rename";
+    const argumentsValue = action.mode === "rename" ? { account_id: action.accountId, label } : { label };
+    if (await call(name, argumentsValue, true)) closeEditor();
+  });
+  $("editor-cancel").addEventListener("click", closeEditor);
+  $("add-account").addEventListener("click", () => openEditor("login"));
+  $("capture-current").addEventListener("click", () => openEditor("capture"));
+  $("refresh").addEventListener("click", () => refreshUsage(true));
+  $("cancel-switch").addEventListener("click", () => call("accounts_cancel_switch", {}, true));
+  $("cancel-login").addEventListener("click", () => call("accounts_cancel_login", {}, true));
+
+  async function poll() {
+    if (disposed || !connected || !canCall || busy || polling || document.hidden) return;
+    const name = active(view.desktopSwitch) ? "accounts_list" : active(view.pending) ? "accounts_pending_status" : active(view.login) ? "accounts_login_status" : "";
+    if (!name) return;
+    polling = true;
+    try { await call(name, {}, false, true); } finally { polling = false; }
+  }
+  async function refreshUsage(force = false) {
+    if (disposed || !connected || !canCall || busy || usageRefreshing || document.hidden) return;
+    usageRefreshing = true; render();
+    try {
+      const result = await rpc("tools/call", {name:"accounts_refresh_usage",arguments:{force}});
+      if (result?.isError !== true && acceptView(result?.structuredContent)) { localMessage = ""; localError = false; await refreshProfiles(); }
+      else status(t("套餐与额度暂未更新，账号切换状态保持原样。"));
+    }
+    catch { if (!disposed) status(t("套餐与额度更新连接失败，保留已显示的数据。")); }
+    finally { usageRefreshing = false; if (!disposed) render(); }
+  }
+  const resizeObserver = typeof ResizeObserver === "function" ? new ResizeObserver(() => {
+    if (connected && !disposed) notify("ui/notifications/size-changed", { width: document.documentElement.clientWidth, height: Math.ceil($("app").getBoundingClientRect().height) });
+  }) : null;
+  resizeObserver?.observe($("app"));
+  window.addEventListener("beforeunload", cleanup);
+
+  async function start() {
+    applyLanguage();
+    render();
+    if (window.parent === window) {
+      showHostFallback(t("这是插件的内嵌资源。请在支持 MCP Apps 的宿主中打开，或在对话中使用账号工具。"));
+      status(t("当前页面没有连接账号库，也没有读取或更改登录状态。")); return;
+    }
+    try {
+      const result = await rpc("ui/initialize", {
+        appInfo: { name: "codex-accounts", version: "0.14.0" },
+        appCapabilities: { availableDisplayModes: ["inline", "fullscreen"] }, protocolVersion: VERSION
+      }, 10000);
+      if (!result || result.protocolVersion !== VERSION || !result.hostCapabilities || typeof result.hostCapabilities !== "object") throw new Error("unsupported");
+      applyContext(result.hostContext);
+      notify("ui/notifications/initialized");
+      connected = true; canCall = typeof result.hostCapabilities.serverTools === "object" && result.hostCapabilities.serverTools !== null;
+      localMessage = ""; render();
+      if (!canCall) {
+        showHostFallback(t("宿主未开放面板中的工具调用。请在对话中说「查看已保存账号」或「切换到工作号」。"));
+        return;
+      }
+      // Loading is read-only. No authentication mutation is ever sent without a user click.
+      if (!receivedView) await call("accounts_list", {}, false, true);
+      if (view.accounts.length) await refreshUsage(false);
+      pollTimer = setInterval(poll, 3500);
+      usageTimer = setInterval(() => refreshUsage(false), 60000);
+    } catch {
+      connected = false; canCall = false;
+      showHostFallback(t("当前宿主未连接 MCP Apps 面板。请在对话中说「打开 Codex 账号面板」使用文字工具入口。"));
+      status(t("面板连接未完成，未执行账号操作。"), true); render();
+    }
+  }
+  start();
+})();
+</script>
+</body>
+</html>

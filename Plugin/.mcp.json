@@ -1,0 +1,11 @@
+{
+  "mcpServers": {
+    "codex_accounts": {
+      "command": "cmd.exe",
+      "args": ["/d", "/c", "runtime\\CodexAccountSwitcher.exe", "--mcp"],
+      "cwd": ".",
+      "startup_timeout_sec": 15,
+      "tool_timeout_sec": 60
+    }
+  }
+}

@@ -1,0 +1,24 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net8.0-windows</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>CodexAccountSwitcher</AssemblyName>
+    <RootNamespace>CodexAccountSwitcher</RootNamespace>
+    <Version>0.14.0</Version>
+    <AssemblyTitle>Codex 账号切换器</AssemblyTitle>
+    <Description>Local encrypted account profiles for Codex desktop.</Description>
+    <Deterministic>true</Deterministic>
+    <PlatformTarget>x64</PlatformTarget>
+    <EnableNETAnalyzers>true</EnableNETAnalyzers>
+    <!-- Private validation trees can contain verified links into an installed app. Never glob or package them. -->
+    <DefaultItemExcludes>$(DefaultItemExcludes);dist\**;.build-home\**;.inspection\**;validation-output\**;Validation\OrdinaryStartupProbe\out\**;Validation\LaunchRedirectProbe\**\out\**;Validation\OfficialEntryInvocation\out\**</DefaultItemExcludes>
+  </PropertyGroup>
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <EmbeddedResource Include="Plugin\ui\accounts.html" LogicalName="CodexAccountSwitcher.AccountPanel.html" />
+    <EmbeddedResource Include="Plugin\ui\translations.json" LogicalName="CodexAccountSwitcher.PanelTranslations.json" />
+  </ItemGroup>
+</Project>

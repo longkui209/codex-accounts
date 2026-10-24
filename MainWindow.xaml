@@ -1,0 +1,70 @@
+<Window x:Class="CodexAccountSwitcher.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Codex 账号切换器" Width="1080" Height="760" MinWidth="920" MinHeight="660"
+        WindowStartupLocation="CenterScreen" Background="#F3F7F7" FontFamily="Microsoft YaHei UI">
+  <Grid>
+    <Grid.ColumnDefinitions><ColumnDefinition Width="210"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+    <Border Background="#193A3D" Padding="25,34,22,24">
+      <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <StackPanel>
+          <Border Background="#2D5354" CornerRadius="12" Width="45" Height="45" HorizontalAlignment="Left" Margin="0,0,0,18"><TextBlock Text="⇄" FontFamily="Segoe UI Symbol" FontSize="29" Foreground="#9BE0CC" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+          <TextBlock Text="CODEX" FontFamily="Segoe UI" FontWeight="SemiBold" FontSize="25" Foreground="White"/>
+          <TextBlock Text="账号切换器" Foreground="#C9DBD9" FontSize="15" Margin="0,7,0,0"/>
+          <TextBlock Text="LOCAL ACCOUNT MANAGER" FontFamily="Segoe UI" Foreground="#91AFAE" FontSize="9" Margin="0,17,0,0"/>
+        </StackPanel>
+        <Border Grid.Row="1" Background="#2A5051" CornerRadius="8" Padding="14,12" Margin="0,35,0,0"><TextBlock Text="◉  订阅账号" Foreground="#E5F7F1" FontSize="13"/></Border>
+        <StackPanel Grid.Row="3">
+          <TextBlock Text="本机加密保存" Foreground="#A8C6C0" FontSize="11"/>
+          <TextBlock Text="凭据仅在你的 Windows&#x0a;用户身份下可解密。" Foreground="#7F9F9B" FontSize="10" LineHeight="18" Margin="0,7,0,0"/>
+          <TextBlock Text="v0.2 · LOCAL ONLY" FontFamily="Segoe UI" Foreground="#72938E" FontSize="9" Margin="0,20,0,0"/>
+        </StackPanel>
+      </Grid>
+    </Border>
+
+    <Grid Grid.Column="1" Margin="34,30,34,23">
+      <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+      <Grid Margin="0,0,0,22">
+        <StackPanel><TextBlock Text="管理你的 Codex 订阅账号" FontSize="24" FontWeight="SemiBold"/><TextBlock Text="一次登录，加密保存；选择账号，快速切换。" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,8,0,0"/></StackPanel>
+        <Button Content="刷新" Click="Refresh_Click" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="15,8"/>
+      </Grid>
+      <Border Grid.Row="1" Background="White" BorderBrush="{StaticResource Line}" BorderThickness="1" CornerRadius="12" Padding="20,16" Margin="0,0,0,18">
+        <Grid>
+          <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+          <StackPanel><TextBlock Text="当前 Codex 登录" FontSize="11" Foreground="{StaticResource Muted}"/><TextBlock x:Name="CurrentAccount" Text="正在读取…" FontSize="17" FontWeight="SemiBold" Margin="0,7,0,0"/><TextBlock x:Name="CurrentDetail" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,6,0,0"/></StackPanel>
+          <Border Grid.Column="1" Background="#EAF5F0" CornerRadius="7" Padding="12,7" VerticalAlignment="Center"><TextBlock x:Name="PlanBadge" Text="—" FontSize="11" Foreground="#25715D" FontWeight="SemiBold"/></Border>
+        </Grid>
+      </Border>
+      <Grid Grid.Row="2" Margin="0,0,0,11">
+        <TextBlock x:Name="CountLabel" Text="已保存账号 · 0" FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center"/>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right">
+          <Button x:Name="CaptureButton" Content="保存当前账号" Click="Capture_Click" Padding="14,8" Margin="0,0,9,0"/>
+          <Button x:Name="LoginButton" Content="＋ 登录新账号" Style="{StaticResource Primary}" Click="Login_Click" Padding="14,8"/>
+        </StackPanel>
+      </Grid>
+      <Grid Grid.Row="3">
+        <ListBox x:Name="AccountsList" SelectionChanged="Accounts_SelectionChanged" Background="Transparent" BorderThickness="0" ScrollViewer.HorizontalScrollBarVisibility="Disabled" HorizontalContentAlignment="Stretch">
+          <ListBox.ItemContainerStyle><Style TargetType="ListBoxItem"><Setter Property="Padding" Value="0"/><Setter Property="Margin" Value="0,0,0,9"/><Setter Property="HorizontalContentAlignment" Value="Stretch"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListBoxItem"><Border x:Name="Card" BorderBrush="#DFE7E6" BorderThickness="1" Background="White" CornerRadius="10"><ContentPresenter/></Border><ControlTemplate.Triggers><Trigger Property="IsSelected" Value="True"><Setter TargetName="Card" Property="BorderBrush" Value="#2A9484"/><Setter TargetName="Card" Property="BorderThickness" Value="2"/><Setter TargetName="Card" Property="Background" Value="#F3FAF6"/></Trigger><Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Card" Property="BorderBrush" Value="#78B4A4"/></Trigger></ControlTemplate.Triggers></ControlTemplate></Setter.Value></Setter></Style></ListBox.ItemContainerStyle>
+          <ListBox.ItemTemplate><DataTemplate>
+            <Grid Margin="16,14">
+              <Grid.ColumnDefinitions><ColumnDefinition Width="48"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+              <Border Background="#E5EFEB" Width="36" Height="36" CornerRadius="10" HorizontalAlignment="Left"><TextBlock Text="●" FontSize="18" Foreground="#719F8E" HorizontalAlignment="Center" VerticalAlignment="Center"/></Border>
+              <StackPanel Grid.Column="1"><TextBlock Text="{Binding Label}" FontSize="14" FontWeight="SemiBold"/><TextBlock Text="{Binding MaskedEmail}" FontSize="11" Foreground="{StaticResource Muted}" Margin="0,5,0,0"/><TextBlock Text="{Binding SavedText}" FontSize="10" Foreground="#90A199" Margin="0,5,0,0"/></StackPanel>
+              <StackPanel Grid.Column="2" HorizontalAlignment="Right"><TextBlock Text="{Binding Plan}" FontSize="11" Foreground="#4C7B69" FontWeight="SemiBold" HorizontalAlignment="Right"/><TextBlock Text="{Binding StateText}" FontSize="10" Foreground="#829388" HorizontalAlignment="Right" Margin="0,7,0,0"/></StackPanel>
+            </Grid>
+          </DataTemplate></ListBox.ItemTemplate>
+        </ListBox>
+        <StackPanel x:Name="EmptyState" VerticalAlignment="Center" HorizontalAlignment="Center" Margin="0,20,0,30"><TextBlock Text="你的账号列表从这里开始" FontSize="17" HorizontalAlignment="Center"/><TextBlock Text="先保存当前登录，或通过官方页面添加另一个账号。" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,12,0,0" TextWrapping="Wrap" TextAlignment="Center"/></StackPanel>
+      </Grid>
+      <Border Grid.Row="4" Background="#EAF1EE" CornerRadius="9" Padding="15,12" Margin="0,12,0,16"><StackPanel><TextBlock x:Name="RuntimeLabel" Text="正在检查 Codex 运行状态…" FontSize="12" FontWeight="SemiBold" Foreground="#466857"/><TextBlock Text="切换前请结束任务并退出 Codex / ChatGPT 桌面版。工具不会强制结束进程。" FontSize="11" Foreground="#7A8D81" Margin="0,6,0,0" TextWrapping="Wrap"/></StackPanel></Border>
+      <StackPanel Grid.Row="5">
+        <Grid>
+          <StackPanel Orientation="Horizontal"><Button x:Name="RenameButton" Content="重命名" Click="Rename_Click" Padding="13,10" Margin="0,0,8,0"/><Button x:Name="RestoreButton" Content="恢复上次切换" Click="Restore_Click" Padding="13,10"/></StackPanel>
+          <StackPanel HorizontalAlignment="Right" Orientation="Horizontal"><CheckBox x:Name="OpenAfterSwitch" Content="切换后打开 Codex" IsChecked="True" VerticalAlignment="Center" Margin="0,0,14,0"/><Button x:Name="SwitchButton" Content="切换到所选账号" Style="{StaticResource Primary}" Click="Switch_Click" Padding="20,11"/></StackPanel>
+        </Grid>
+        <TextBlock x:Name="StatusText" Text="账号库使用 Windows 加密；不会上传登录凭据。" Foreground="{StaticResource Muted}" FontSize="11" TextWrapping="Wrap" Margin="0,15,0,0"/>
+      </StackPanel>
+    </Grid>
+  </Grid>
+</Window>

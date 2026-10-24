@@ -1,0 +1,26 @@
+name: Isolated Windows validation
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  synthetic:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      # Official actions; no repository secret or write permission is required.
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Build and synthetic checks
+        shell: pwsh
+        run: ./Test.ps1

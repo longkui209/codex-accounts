@@ -1,0 +1,11 @@
+{
+  "owner": "longkui209",
+  "repository": "codex-accounts",
+  "visibility": "public",
+  "description": "Independent Windows account manager for Codex: encrypted profiles, usage visibility and multilingual UI. Experimental integration under review.",
+  "topics": ["codex", "windows", "mcp", "account-management", "dotnet", "privacy", "multilingual"],
+  "profileRepository": "longkui209/longkui209",
+  "suggestedBio": "Building Windows developer tools and local MCP integrations. Working on Codex Accounts.",
+  "publishCondition": "The maintainer selected a complete experimental public source preview with disclosed findings. Verify the owner and existing repository, then publish only a validated source-preview export; product and program-application approval remain separate.",
+  "profileCondition": "Inspect the current profile README and preserve unrelated existing content before applying the prepared presentation."
+}

@@ -1,0 +1,25 @@
+{
+  "name": "codex-accounts",
+  "version": "0.14.0",
+  "description": "在桌面面板管理订阅账号与额度，支持自动轮换、普通启动集成和十种显示语言。",
+  "author": {
+    "name": "longkui209"
+  },
+  "keywords": ["codex", "windows", "accounts", "local", "account-switcher"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Codex 账号切换",
+    "shortDescription": "多语言账号面板、实时额度与自动轮换",
+    "longDescription": "独立开发的 Windows 本地账号工具。账号按 Windows 用户加密保存，支持十种语言、套餐额度展示及确认后的账号操作。订阅路由、自动轮换、普通启动与原生输入适配为实验功能，兼容性和使用边界见项目文档；不代表 OpenAI 官方认可。",
+    "developerName": "longkui209",
+    "category": "Productivity",
+    "capabilities": ["Interactive", "Read", "Write"],
+    "defaultPrompt": [
+      "打开我的 Codex 账号面板",
+      "把当前 Codex 登录保存为个人号",
+      "选择已保存的工作号订阅，保留当前模型和桌面登录"
+    ],
+    "brandColor": "#0F8B74"
+  }
+}
