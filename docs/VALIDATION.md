@@ -6,6 +6,11 @@ The default runner covers a framework build, Windows synthetic core checks, loop
 
 ## Actual preparation results
 
+- Current 0.15.5 development build and default suite passed 120 core checks with zero skips plus the five protocol/DOM/release runners. The installed plugin's isolated MCP protocol also passed.
+- Current official authentication parsed successfully in a read-only check after adding the official optional metadata. The resident official sandbox service passed SCM, system-account, PID, protected-path and signature checks; no service was stopped for that check.
+- An owned running update service reproduced Windows stop error 1061. The updated installer continued only after its existing SCM stopped-state check and then completed the running-service upgrade. The new service, current exact-path rule and installed file hashes were checked separately.
+- The current native resource adapter passed scalar-state and derived Work subscribe/update/dispose checks. An owned signed 26.1021.3705.0 copy rendered the empty login profile, loaded both adapters, retained observed renderer/GPU signature controls and cleaned up/restored diagnostic registration. No authentication or model inference was used in that render check.
+- The user's next normal restart and a completed real subscription request remain pending for the latest component. These local checks do not certify that request or paired-phone operation.
 - Original checkout: Release build succeeded and the default synthetic suite passed.
 - A clean 141-file allowlisted source export was built from scratch and passed the default suite, including 113 core checks with zero skips, loopback routing, isolated MCP and panel DOM checks.
 - Release-tool adversarial checks passed: 40 cases, including links, traversal, sensitive content, non-echoing diagnostics and separate experimental-preview authorization. Formal product-publication checks still refuse unresolved findings.

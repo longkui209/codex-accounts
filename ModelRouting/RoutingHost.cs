@@ -110,6 +110,8 @@ public static class RoutingHost
             await using var surface=new NativeSurfacePipe();
             var gateService=new InferenceGateService(vault,controller,rotationUsage);
             await using var nativeInput=new NativeInputBridge(surface,gateService.ReadAsync);
+            try{nativeInput.Prepare();} // Discover before script requests; unknown resources retain native behavior.
+            catch{ /* StartAsync records incompatibility; desktop launch itself must remain available. */ }
             controller.NativeInputStatus=()=>nativeInput.Status;
             var start=NativeRoutingLaunch.BuildStartInfo(desktopExecutable,relay.BaseUri!);
             start.Environment.TryGetValue("CODEX_ELECTRON_USER_DATA_PATH",out var configuredProfile);

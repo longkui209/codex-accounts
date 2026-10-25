@@ -54,6 +54,40 @@ public static class LiveCredentialSelfTests
             reports.Add("PASS: 五分钟前刷新、实际 audience 客户端 ID、轮换凭据和名称持久化。");
         }
 
+        using(var data=Fixture.Create(root,"official-metadata",2))
+        {
+            var node=System.Text.Json.Nodes.JsonNode.Parse(data.Original)!;
+            node["tokens"]!["oauth_provenance"]=new System.Text.Json.Nodes.JsonObject{["issuer"]="https://auth.openai.com",["client_id"]=LiveCredentials.DefaultClientId};
+            node["tokens"]!["login_owner_id"]="synthetic-owner-preserved";
+            var bytes=JsonSerializer.SerializeToUtf8Bytes(node);
+            try{using var snapshot=AuthSnapshot.FromBytes(bytes);data.Vault.Save(snapshot);}finally{CryptographicOperations.ZeroMemory(bytes);}
+            using var handler=new FakeHandler((_,_)=>Task.FromResult(Reply(data.Clock.Now)));
+            using var http=new HttpClient(handler);using var provider=new LiveCredentials(data.Vault,http,data.Clock);
+            _=await provider.GetAsync(data.ProfileId,false,CancellationToken.None);
+            using var updated=data.Vault.Read(data.ProfileId);var encoded=updated.CopyBytes();
+            try
+            {
+                using var document=JsonDocument.Parse(encoded);var tokens=document.RootElement.GetProperty("tokens");
+                Require(tokens.GetProperty("login_owner_id").GetString()=="synthetic-owner-preserved"&&tokens.GetProperty("oauth_provenance").GetProperty("client_id").GetString()==LiveCredentials.DefaultClientId,"刷新保留官方 OAuth 元数据");
+            }
+            finally{CryptographicOperations.ZeroMemory(encoded);}
+            using(var current=data.Vault.Read(data.ProfileId))
+            {
+                var original=current.CopyBytes();
+                try
+                {
+                    var altered=System.Text.Json.Nodes.JsonNode.Parse(original)!;
+                    altered["tokens"]!["oauth_provenance"]!["client_id"]="app_synthetic_wrong_client";
+                    var invalid=JsonSerializer.SerializeToUtf8Bytes(altered);
+                    try{using var snapshot=AuthSnapshot.FromBytes(invalid);data.Vault.Save(snapshot);}finally{CryptographicOperations.ZeroMemory(invalid);}
+                }
+                finally{CryptographicOperations.ZeroMemory(original);}
+            }
+            await Rejected(()=>provider.GetAsync(data.ProfileId,true,CancellationToken.None));
+            Require(handler.Calls==1,"OAuth 客户端与 audience 不匹配时不联网");
+            reports.Add("PASS: 官方 OAuth 元数据与登录归属标记在合成刷新后保留，客户端身份核对仍生效。");
+        }
+
         using (var data = Fixture.Create(root, "forced", 60))
         using (var handler = new FakeHandler(async (request, cancellation) =>
         {

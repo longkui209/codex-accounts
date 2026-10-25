@@ -97,6 +97,7 @@ public static class CodexRuntime
                     var name = process.ProcessName;
                     // Other switcher windows are serialized by the named mutex; they are not Codex clients.
                     if (name.Equals("CodexAccountSwitcher", StringComparison.OrdinalIgnoreCase)) continue;
+                    if (name.Equals(OfficialSandboxService.ImageName,StringComparison.OrdinalIgnoreCase)&&OfficialSandboxService.IsVerifiedDaemon(process))continue;
                     if (IsBlockingProcessName(name)) blocking.Add($"{name} (PID {process.Id})");
                 }
                 catch (InvalidOperationException)

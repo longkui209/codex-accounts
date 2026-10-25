@@ -1,6 +1,6 @@
 {
   "name": "codex-accounts",
-  "version": "0.14.0",
+  "version": "0.15.5",
   "description": "在桌面面板管理订阅账号与额度，支持自动轮换、普通启动集成和十种显示语言。",
   "author": {
     "name": "longkui209"

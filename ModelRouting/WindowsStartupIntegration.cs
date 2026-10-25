@@ -3,6 +3,8 @@ using System.Runtime.InteropServices;
 using System.Security.AccessControl;
 using System.Security.Principal;
 using System.Text.Json;
+using System.Security.Cryptography;
+using System.Text;
 using CodexAccountSwitcher.Core;
 using CodexAccountSwitcher.LiveSession;
 using Microsoft.Win32;
@@ -21,32 +23,58 @@ internal static class WindowsStartupIntegration
     private static string EnabledFile=>Path.Combine(UserSettings,"enabled.json");
     internal static bool ShouldEnableRouting(bool machineEnabled,bool userEnabled,bool vaultExists,bool pluginInstalled)=>
         userEnabled||machineEnabled&&vaultExists&&pluginInstalled;
+    internal sealed record IntegrationStatus(string State,string Message,bool Adaptive=false);
     internal static object Status()
     {
         try
         {
-            var path=Path.Combine(UserSettings,"install-status.json");
-            if(!File.Exists(path))
+            var source=DesktopLaunch.FindInstalledDesktop();
+            using var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64);
+            using var root=machine.OpenSubKey(ParentKey+@"\ChatGPT.exe");
+            if(root is null)return new IntegrationStatus("not-installed","普通启动组件尚未安装。");
+            var filter=FindFilter(root,source);
+            var adaptive=StartupVersionService.Running();
+            if(filter is null)return new IntegrationStatus("outdated",adaptive?"正在自动跟随官方版本更新；准备完成后请正常重开客户端。":"官方客户端已更新，启动规则尚未匹配；请更新普通启动组件。",adaptive);
+            using(filter)
             {
-                using var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64);
-                using var shared=machine.OpenSubKey(ParentKey+@"\ChatGPT.exe\"+FilterName);
-                if(shared?.GetValue("CodexAccountsOwner") as string==Owner&&shared.GetValue("AllUsersEnabled") is int enabled&&enabled==1)
-                    return new{state="active",message="整机普通启动组件已登记；各 Windows 用户使用自己的登录和账号库，实际连接须打开后核验。"};
-                return new{state="not-installed",message="普通启动组件尚未安装。"};
+                if(filter.GetValue("CodexAccountsOwner") as string!=Owner ||
+                    filter.GetValue("Debugger") is not string command||!TryDebuggerBundle(command,out var bundle)||
+                    !Directory.Exists(bundle))return new IntegrationStatus("not-registered","启动注册缺失或归属不符，未确认接入。");
+                VerifyMachineDirectory(bundle);
+                var manifest=Path.Combine(bundle,"integration.json");NativeRuntimeLease.Plain(manifest);
+                if(new FileInfo(manifest).Length>8192)return new IntegrationStatus("not-registered","启动组件清单未通过校验。");
+                var metadata=JsonSerializer.Deserialize<NativeRuntimeLease.Manifest>(File.ReadAllBytes(manifest));
+                if(metadata is null||!MatchesCurrentInstallation(metadata.SourceExecutable,source)||metadata.SourceHash!=NativeRuntimeLease.Hash(source))
+                    return new IntegrationStatus("outdated","启动组件文件与当前官方版本不一致，等待重新核验。",adaptive);
             }
-            NativeRuntimeLease.Plain(path);
-            if(new FileInfo(path).Length>4096)throw new IOException();
-            var recorded=JsonSerializer.Deserialize<JsonElement>(File.ReadAllBytes(path));
-            if(recorded.TryGetProperty("state",out var state)&&state.GetString()=="active")
-            {
-                using var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64);
-                using var filter=machine.OpenSubKey(ParentKey+@"\ChatGPT.exe\"+FilterName);
-                if(filter?.GetValue("CodexAccountsOwner") as string!=Owner||filter.GetValue("Debugger") is not string debugger||!debugger.EndsWith(" --integrated-launch",StringComparison.Ordinal))
-                    return new{state="not-registered",message="普通启动注册未找到，请重新安装组件。"};
-            }
-            return recorded;
+            return new IntegrationStatus("active",adaptive?"版本跟随服务已启用，启动规则匹配当前官方安装；当前窗口连接状态单独核验。":"启动规则匹配当前官方安装；版本跟随服务尚未启用。",adaptive);
         }
-        catch{return new{state="unknown",message="尚未核验普通启动组件状态。"};}
+        catch{return new IntegrationStatus("unknown","尚未核验当前版本的普通启动状态。");}
+    }
+    internal static bool MatchesCurrentInstallation(string? registered,string current)=>
+        !string.IsNullOrWhiteSpace(registered)&&Path.IsPathFullyQualified(registered)&&
+        string.Equals(Path.GetFullPath(registered),Path.GetFullPath(current),StringComparison.OrdinalIgnoreCase);
+    internal static string VersionFilterName(string source)=>FilterName+"_"+Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(Path.GetFullPath(source).ToUpperInvariant())))[..16].ToLowerInvariant();
+    private static RegistryKey? FindFilter(RegistryKey root,string source,bool writable=false)
+    {
+        foreach(var name in root.GetSubKeyNames())
+        {
+            if(name!=FilterName&&!name.StartsWith(FilterName+"_",StringComparison.Ordinal))continue;
+            var key=root.OpenSubKey(name,writable);
+            if(key is not null&&MatchesCurrentInstallation(key.GetValue("FilterFullPath") as string,source))return key;
+            key?.Dispose();
+        }
+        return null;
+    }
+    private static bool TryDebuggerBundle(string command,out string bundle)
+    {
+        bundle="";const string suffix="\" --integrated-launch";
+        if(!command.StartsWith('"')||!command.EndsWith(suffix,StringComparison.Ordinal))return false;
+        var executable=command[1..^suffix.Length];
+        if(!Path.IsPathFullyQualified(executable)||Path.GetFileName(executable)!="CodexAccountSwitcher.exe")return false;
+        bundle=Path.GetDirectoryName(executable)!;
+        return bundle.StartsWith(Path.Combine(InstallationRoot,"versions")+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase)&&
+            Guid.TryParseExact(Path.GetFileName(bundle),"N",out _);
     }
     private static void Record(string stage,string message)
     {
@@ -71,50 +99,80 @@ internal static class WindowsStartupIntegration
     {
         using var identity=WindowsIdentity.GetCurrent();
         if(!new WindowsPrincipal(identity).IsInRole(WindowsBuiltInRole.Administrator))throw new UserFacingException("Windows 启动集成需要一次管理员安装确认。");
+        Record("preparing","正在安装版本跟随组件；不会停止当前客户端。");
         try
         {
-            Record("preparing","正在准备签名原生运行文件。请保存当前任务，准备完成后正常退出所有 Codex 窗口。");
-            var root=InstallationRoot;
-            if(Directory.Exists(root))
-            {
-                NativeRuntimeLease.Plain(root);
-                var marker=Path.Combine(root,".codex-accounts-owner");
-                if(!File.Exists(marker)||File.ReadAllText(marker)!=Owner)throw new UserFacingException("启动组件目录已存在且归属不符，未覆盖。");
-                VerifyMachineDirectory(root);
-            }
-            else
-            {
-                Directory.CreateDirectory(root);SecureMachineDirectory(root);
-                File.WriteAllText(Path.Combine(root,".codex-accounts-owner"),Owner);
-            }
-            var bundle=Path.Combine(root,"versions",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(bundle);NativeRuntimeLease.Plain(bundle);
-            VerifyMachineDirectory(Path.GetDirectoryName(bundle)!);VerifyMachineDirectory(bundle);
-            foreach(var name in new[]{"CodexAccountSwitcher.exe","CodexAccountSwitcher.dll","CodexAccountSwitcher.deps.json","CodexAccountSwitcher.runtimeconfig.json"})
-            {
-                var source=Path.Combine(AppContext.BaseDirectory,name);NativeRuntimeLease.Plain(source);
-                using var input=new FileStream(source,FileMode.Open,FileAccess.Read,FileShare.Read);
-                using var output=new FileStream(Path.Combine(bundle,name),FileMode.CreateNew,FileAccess.Write,FileShare.None);input.CopyTo(output);output.Flush(true);
-            }
-            var metadata=NativeRuntimeLease.Create(bundle,typeof(WindowsStartupIntegration).Assembly.GetName().Version?.ToString()??"unknown");
-            Record("waiting-exit","原生运行文件已准备。请保存任务并正常退出所有 Codex 窗口；安装完成后会自动打开客户端。");
-            var deadline=DateTimeOffset.UtcNow.AddMinutes(15);
-            while(!CodexRuntime.Inspect().CanSwitch)
-            {
-                if(!waitForExit||DateTimeOffset.UtcNow>=deadline)throw new UserFacingException("尚有 Codex 桌面或后台运行，启动注册尚未启用。请正常退出后重新安装。");
-                await Task.Delay(500,cancellation).ConfigureAwait(false);
-            }
-            using(var runtime=NativeRuntimeLease.Open(bundle))Register(bundle,runtime.Metadata);
-            Directory.CreateDirectory(UserSettings);FilePrivacy.ApplyDirectory(UserSettings);
-            File.WriteAllText(EnabledFile,Owner);FilePrivacy.ApplyFile(EnabledFile);
-            Record("active","整机普通启动组件已安装，所有 Windows 用户的匹配入口均会接入；账号库按用户隔离，实际连接须打开后核验。");
-            var launch=new ProcessStartInfo(metadata.SourceExecutable){UseShellExecute=false,WorkingDirectory=Path.GetDirectoryName(metadata.SourceExecutable)!,CreateNoWindow=true,WindowStyle=ProcessWindowStyle.Hidden};
-            _=Process.Start(launch)??throw new IOException();
+            EnsureMachineRoot();
+            var monitorRoot=Path.Combine(InstallationRoot,"monitor");Directory.CreateDirectory(monitorRoot);VerifyMachineDirectory(monitorRoot);
+            var monitor=Path.Combine(monitorRoot,Guid.NewGuid().ToString("N"));Directory.CreateDirectory(monitor);VerifyMachineDirectory(monitor);
+            CopyComponent(AppContext.BaseDirectory,monitor);
+            StartupVersionService.Install(monitor);
+            // Prepare and verify the current version synchronously so installation has a concrete result.
+            EnsureVersionRegistered(DesktopLaunch.FindInstalledDesktop(),cancellation);
+            Record("active","版本跟随服务已安装，当前版本规则已核验；请正常重开客户端加载订阅连接。");
+            await Task.CompletedTask;
         }
-        catch
+        catch{Record("failed","版本跟随组件未完成安装，现有客户端和账号保持不变。");throw;}
+    }
+    private static void EnsureMachineRoot()
+    {
+        if(Directory.Exists(InstallationRoot))
         {
-            Record("failed","启动组件安装没有完成。已准备文件不代表普通入口已接通；请查看本次安装状态后重试。");
-            throw;
+            VerifyMachineDirectory(InstallationRoot);
+            var marker=Path.Combine(InstallationRoot,".codex-accounts-owner");NativeRuntimeLease.Plain(marker);
+            if(File.ReadAllText(marker)!=Owner)throw new IOException("Unknown integration owner.");
         }
+        else
+        {
+            Directory.CreateDirectory(InstallationRoot);SecureMachineDirectory(InstallationRoot);
+            File.WriteAllText(Path.Combine(InstallationRoot,".codex-accounts-owner"),Owner);
+        }
+        var versions=Path.Combine(InstallationRoot,"versions");Directory.CreateDirectory(versions);VerifyMachineDirectory(versions);
+    }
+    private static void CopyComponent(string from,string destination)
+    {
+        VerifyMachineDirectory(destination);
+        foreach(var name in new[]{"CodexAccountSwitcher.exe","CodexAccountSwitcher.dll","CodexAccountSwitcher.deps.json","CodexAccountSwitcher.runtimeconfig.json"})
+        {
+            var source=Path.Combine(from,name);NativeRuntimeLease.Plain(source);
+            using var input=new FileStream(source,FileMode.Open,FileAccess.Read,FileShare.Read);
+            using(var output=new FileStream(Path.Combine(destination,name),FileMode.CreateNew,FileAccess.Write,FileShare.None))
+            {input.CopyTo(output);output.Flush(true);}
+            if(NativeRuntimeLease.Hash(source)!=NativeRuntimeLease.Hash(Path.Combine(destination,name)))throw new IOException("Component copy changed.");
+        }
+    }
+    internal static void EnsureVersionRegistered(string source,CancellationToken cancellation)
+    {
+        EnsureMachineRoot();
+        using var gate=new Mutex(false,@"Global\CodexAccountsOwnedVersionRegistration");
+        var entered=false;
+        try
+        {
+            try{entered=gate.WaitOne(TimeSpan.FromSeconds(90));}catch(AbandonedMutexException){entered=true;}
+            if(!entered)throw new IOException("Another version preparation is still running.");
+            cancellation.ThrowIfCancellationRequested();
+            if(!DesktopLaunch.FindInstalledDesktops(true).Contains(source,StringComparer.OrdinalIgnoreCase))throw new IOException("Installation changed.");
+            using(var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64))
+            using(var root=machine.OpenSubKey(ParentKey+@"\ChatGPT.exe"))
+            using(var existing=root is null?null:FindFilter(root,source))
+            {
+                if(existing is not null)ValidateOwnedFilter(existing);
+                if(existing?.GetValue("CodexAccountsOwner") as string==Owner&&existing.GetValue("Debugger") is string command&&TryDebuggerBundle(command,out var prepared)&&
+                    File.Exists(Path.Combine(prepared,"integration.json"))&&
+                    NativeRuntimeLease.Hash(Path.Combine(prepared,"CodexAccountSwitcher.dll"))==NativeRuntimeLease.Hash(Path.Combine(AppContext.BaseDirectory,"CodexAccountSwitcher.dll")))return;
+            }
+            var bundle=Path.Combine(InstallationRoot,"versions",Guid.NewGuid().ToString("N"));Directory.CreateDirectory(bundle);VerifyMachineDirectory(bundle);
+            CopyComponent(AppContext.BaseDirectory,bundle);
+            var metadata=NativeRuntimeLease.Create(bundle,typeof(WindowsStartupIntegration).Assembly.GetName().Version?.ToString()??"unknown",source,cancellation);
+            cancellation.ThrowIfCancellationRequested();Register(bundle,metadata);
+        }
+        finally{if(entered)gate.ReleaseMutex();}
+    }
+    private static void ValidateOwnedFilter(RegistryKey key)
+    {
+        if(key.GetValue("CodexAccountsOwner") as string!=Owner||key.GetSubKeyNames().Length!=0||
+           key.GetValueNames().Any(n=>n is not ("CodexAccountsOwner" or "FilterFullPath" or "Debugger" or "AllUsersEnabled"))||
+           key.GetValue("Debugger") is not string command||!TryDebuggerBundle(command,out _))throw new IOException("Startup rule ownership changed.");
     }
     private static void Register(string bundle,NativeRuntimeLease.Manifest metadata)
     {
@@ -122,49 +180,52 @@ internal static class WindowsStartupIntegration
         if(debugger.Length>=250)throw new UserFacingException("启动组件路径过长，未登记 Windows 启动规则。");
         using var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64);
         using var parent=machine.OpenSubKey(ParentKey,true)??throw new IOException();
-        using var existing=parent.OpenSubKey("ChatGPT.exe");
-        if(existing is not null)throw new UserFacingException("ChatGPT.exe 已有启动规则，未覆盖。请先卸载已有普通启动组件再安装。");
-        using var root=FreshKey(parent,"ChatGPT.exe");var filterCreated=false;
+        using var previous=parent.OpenSubKey("ChatGPT.exe");
+        if(previous is not null&&(previous.GetValue("CodexAccountsOwner") as string!=Owner||previous.GetValue("UseFilter") is not int mode||mode!=1||previous.GetValue("Debugger") is not null))
+            throw new UserFacingException("存在不属于本组件的启动设置，未覆盖。");
+        using var root=previous is null?FreshKey(parent,"ChatGPT.exe"):parent.OpenSubKey("ChatGPT.exe",true)!;
+        if(previous is null){root.SetValue("CodexAccountsOwner",Owner,RegistryValueKind.String);root.SetValue("UseFilter",1,RegistryValueKind.DWord);}
+        using var current=FindFilter(root,metadata.SourceExecutable,true);
+        if(current is not null)
+        {
+            ValidateOwnedFilter(current);
+            var old=current.GetValue("Debugger") as string;
+            try{current.SetValue("Debugger",debugger);current.SetValue("AllUsersEnabled",1,RegistryValueKind.DWord);current.Flush();}
+            catch{if(current.GetValue("Debugger") as string==debugger&&old is not null)current.SetValue("Debugger",old);throw;}
+            return;
+        }
+        var name=VersionFilterName(metadata.SourceExecutable);
+        using var filter=FreshKey(root,name);
         try
         {
-            root.SetValue("CodexAccountsOwner",Owner,RegistryValueKind.String);root.SetValue("UseFilter",1,RegistryValueKind.DWord);
-            using var filter=FreshKey(root,FilterName);filterCreated=true;
-            filter.SetValue("CodexAccountsOwner",Owner,RegistryValueKind.String);
-            filter.SetValue("FilterFullPath",metadata.SourceExecutable,RegistryValueKind.String);
-            filter.SetValue("AllUsersEnabled",1,RegistryValueKind.DWord);
-            filter.SetValue("Debugger",debugger,RegistryValueKind.String);filter.Flush();root.Flush();
-            if(filter.GetValue("Debugger") as string!=debugger||filter.GetValue("FilterFullPath") as string!=metadata.SourceExecutable)throw new IOException();
+            filter.SetValue("CodexAccountsOwner",Owner);filter.SetValue("FilterFullPath",metadata.SourceExecutable);
+            filter.SetValue("AllUsersEnabled",1,RegistryValueKind.DWord);filter.SetValue("Debugger",debugger);filter.Flush();root.Flush();
+            ValidateOwnedFilter(filter);
+            if(!MatchesCurrentInstallation(filter.GetValue("FilterFullPath") as string,metadata.SourceExecutable))throw new IOException();
         }
         catch
         {
-            if(filterCreated){using var filter=root.OpenSubKey(FilterName,true);if(filter?.GetValue("CodexAccountsOwner") as string==Owner){foreach(var name in filter.GetValueNames())filter.DeleteValue(name);filter.Dispose();root.DeleteSubKey(FilterName,false);}}
-            if(root.GetSubKeyNames().Length==0&&root.GetValue("CodexAccountsOwner") as string==Owner){foreach(var name in root.GetValueNames())root.DeleteValue(name);root.Dispose();parent.DeleteSubKey("ChatGPT.exe",false);}
-            throw;
+            if(filter.GetValue("CodexAccountsOwner") as string==Owner){foreach(var value in filter.GetValueNames())filter.DeleteValue(value);filter.Dispose();root.DeleteSubKey(name,false);}throw;
         }
     }
     internal static void Uninstall()
     {
+        StartupVersionService.Remove(); // Stops only the owned version monitor; never stops a user desktop.
         using var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64);
         using var parent=machine.OpenSubKey(ParentKey,true)??throw new IOException();
         using var root=parent.OpenSubKey("ChatGPT.exe",true);
         if(root is not null)
         {
-            using var filter=root.OpenSubKey(FilterName,true);
-            if(filter is not null)
+            foreach(var name in root.GetSubKeyNames().Where(n=>n==FilterName||n.StartsWith(FilterName+"_",StringComparison.Ordinal)))
             {
-                var debugger=filter.GetValue("Debugger") as string;
-                if(filter.GetValue("CodexAccountsOwner") as string!=Owner||filter.GetSubKeyNames().Length!=0||
-                    filter.GetValueNames().Any(name=>name is not ("CodexAccountsOwner" or "FilterFullPath" or "Debugger" or "AllUsersEnabled"))||
-                    debugger is null||!debugger.StartsWith('"'+Path.Combine(InstallationRoot,"versions")+Path.DirectorySeparatorChar,StringComparison.OrdinalIgnoreCase))
-                    throw new UserFacingException("启动规则已改变，未删除不明配置。");
-                filter.DeleteValue("Debugger",false);filter.DeleteValue("AllUsersEnabled",false);filter.DeleteValue("FilterFullPath",false);filter.DeleteValue("CodexAccountsOwner",false);filter.Dispose();root.DeleteSubKey(FilterName,false);
+                using var filter=root.OpenSubKey(name,true)!;ValidateOwnedFilter(filter);
+                foreach(var value in filter.GetValueNames())filter.DeleteValue(value);filter.Dispose();root.DeleteSubKey(name,false);
             }
-            if(root.GetSubKeyNames().Length==0&&root.GetValue("CodexAccountsOwner") as string==Owner&&
-                root.GetValueNames().All(name=>name is "CodexAccountsOwner" or "UseFilter"))
+            if(root.GetSubKeyNames().Length==0&&root.GetValue("CodexAccountsOwner") as string==Owner&&root.GetValueNames().All(n=>n is "CodexAccountsOwner" or "UseFilter"))
             {foreach(var name in root.GetValueNames())root.DeleteValue(name);root.Dispose();parent.DeleteSubKey("ChatGPT.exe",false);}
         }
         if(File.Exists(EnabledFile)){NativeRuntimeLease.Plain(EnabledFile);File.Delete(EnabledFile);}
-        Record("removed","普通启动注册已移除，原版入口已恢复。正在使用的本地运行文件保留，待客户端退出后可清理。");
+        Record("removed","版本跟随服务及本组件启动规则已移除；运行中的文件保留，当前客户端不会被关闭。");
     }
     internal static async Task LaunchAsync(string source,IReadOnlyList<string> arguments,CancellationToken cancellation)
     {
@@ -177,7 +238,8 @@ internal static class WindowsStartupIntegration
         var userEnabled=File.Exists(EnabledFile)&&new FileInfo(EnabledFile).Length<128&&File.ReadAllText(EnabledFile)==Owner;
         bool machineEnabled;
         using(var machine=RegistryKey.OpenBaseKey(RegistryHive.LocalMachine,RegistryView.Registry64))
-        using(var filter=machine.OpenSubKey(ParentKey+@"\ChatGPT.exe\"+FilterName))
+        using(var machineRoot=machine.OpenSubKey(ParentKey+@"\ChatGPT.exe"))
+        using(var filter=machineRoot is null?null:FindFilter(machineRoot,source))
             machineEnabled=filter?.GetValue("CodexAccountsOwner") as string==Owner&&filter.GetValue("AllUsersEnabled") is int enabled&&enabled==1;
         var local=Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData);
         var vaultExists=Directory.Exists(Path.Combine(local,"CodexAccountSwitcher","vault"));
@@ -193,7 +255,7 @@ internal static class WindowsStartupIntegration
         }
         await RoutingHost.RunIntegratedAsync(cancellation,runtime,arguments).ConfigureAwait(false);
     }
-    private static void VerifyMachineDirectory(string path)
+    internal static void VerifyMachineDirectory(string path)
     {
         NativeRuntimeLease.Plain(path);
         var security=new DirectoryInfo(path).GetAccessControl();

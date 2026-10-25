@@ -7,7 +7,7 @@
     <Nullable>enable</Nullable>
     <AssemblyName>CodexAccountSwitcher</AssemblyName>
     <RootNamespace>CodexAccountSwitcher</RootNamespace>
-    <Version>0.14.0</Version>
+    <Version>0.15.5</Version>
     <AssemblyTitle>Codex 账号切换器</AssemblyTitle>
     <Description>Local encrypted account profiles for Codex desktop.</Description>
     <Deterministic>true</Deterministic>

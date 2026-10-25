@@ -150,6 +150,13 @@
     {
       "source": "docs/COMPATIBILITY.md",
       "destination": "COMPATIBILITY.md"
-    }
+    },
+    "ModelRouting/NativeAdapterCatalog.cs",
+    "ModelRouting/StartupVersionService.cs",
+    "Validation/NativeAdapterAudit.cs",
+    "Validation/NativeAdapterCatalogSelfTests.cs",
+    "docs/VERSION_UPDATES.md",
+    "Validation/native-signal-runtime.cjs",
+    "Core/OfficialSandboxService.cs"
   ]
 }

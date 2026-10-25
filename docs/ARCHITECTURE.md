@@ -17,6 +17,6 @@ Native input adaptation reads current quota availability for the routing context
 
 The optional elevated startup component copies the locally installed signed application into protected Program Files storage and registers an exact-path machine-wide IFEO rule. Parent/child application roles use the same signed copy. Unrecognized update paths and resource hashes need fresh verification.
 
-The component shares code, not accounts. Vaults and selection state remain per Windows user. Restoring startup removes owned registration; active runtime files can remain to avoid interrupting a desktop. No service or scheduled task is installed.
+The component shares code, not accounts. Vaults and selection state remain per Windows user. Explicit administrator installation can add the removable version-update service described in [version updates](VERSION_UPDATES.md). Its LocalSystem entry handles installation metadata and owned exact-path rules without reading accounts or chats. Restoring startup removes that service and owned registration; active runtime files can remain to avoid interrupting a desktop. No scheduled task is installed.
 
 The native adapter, backend endpoints, OAuth integration and startup hook are not established as supported third-party product APIs by this review. Their inclusion makes the implementation inspectable; MIT licensing and simulations do not resolve service-policy/provenance questions.

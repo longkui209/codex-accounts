@@ -2926,5 +2926,53 @@
     "de": ")\nWechselt Anmeldung und Abonnement. Verlauf und Verbindungen folgen dem Konto. Speichern, normal schließen und binnen 15 Minuten öffnen. Die aktuelle Anmeldung ändert sich noch nicht.",
     "pt-BR": ")\nAlterna login e assinatura. Histórico e conexões seguem a conta. Salve e feche normalmente, depois reabra em até 15 minutos. O login atual não muda imediatamente.",
     "ru": ")\nМеняет вход и подписку. История и плагины зависят от аккаунта. Сохраните и закройте, затем откройте в течение 15 минут. Текущий вход сразу не изменится."
+  },
+  "版本跟随服务已启用": {
+    "zh-CN": "版本跟随服务已启用",
+    "zh-TW": "版本跟隨服務已啟用",
+    "en": "Version updates are monitored",
+    "ja": "バージョン更新を監視中",
+    "ko": "버전 업데이트 감시 중",
+    "es": "Seguimiento de versiones activo",
+    "fr": "Suivi des versions activé",
+    "de": "Versionsüberwachung aktiv",
+    "pt-BR": "Monitoramento de versões ativo",
+    "ru": "Отслеживание версий включено"
+  },
+  "正在跟随客户端更新，请准备完成后正常重开。": {
+    "zh-CN": "正在跟随客户端更新，请准备完成后正常重开。",
+    "zh-TW": "正在跟隨用戶端更新，準備完成後請正常重開。",
+    "en": "Preparing the client update. Reopen normally when ready.",
+    "ja": "更新を準備中です。完了後に通常どおり開き直してください。",
+    "ko": "클라이언트 업데이트 준비 중입니다. 완료 후 정상적으로 다시 여세요.",
+    "es": "Preparando la actualización. Vuelve a abrir cuando termine.",
+    "fr": "Préparation de la mise à jour. Rouvrez après la préparation.",
+    "de": "Update wird vorbereitet. Danach regulär neu öffnen.",
+    "pt-BR": "Preparando a atualização. Reabra normalmente ao concluir.",
+    "ru": "Подготовка обновления. После завершения откройте приложение заново."
+  },
+  "客户端已更新，请更新普通启动组件。": {
+    "zh-CN": "客户端已更新，请更新普通启动组件。",
+    "zh-TW": "用戶端已更新，請更新一般啟動元件。",
+    "en": "The client changed. Update startup integration.",
+    "ja": "クライアントが更新されました。起動連携を更新してください。",
+    "ko": "클라이언트가 변경되었습니다. 시작 통합을 업데이트하세요.",
+    "es": "El cliente cambió. Actualiza la integración de inicio.",
+    "fr": "Le client a changé. Mettez à jour l’intégration au démarrage.",
+    "de": "Client geändert. Startintegration aktualisieren.",
+    "pt-BR": "O cliente mudou. Atualize a integração de inicialização.",
+    "ru": "Клиент обновлён. Обновите интеграцию запуска."
+  },
+  "需要管理员确认，将安装可卸载的版本更新服务。对所有 Windows 用户生效，账号数据各自隔离。安装后正常重开 Codex。": {
+    "zh-CN": "需要管理员确认，将安装可卸载的版本更新服务。对所有 Windows 用户生效，账号数据各自隔离。安装后正常重开 Codex。",
+    "zh-TW": "需要管理員確認，將安裝可解除安裝的版本更新服務。對所有 Windows 使用者生效，帳號資料各自隔離。安裝後正常重開 Codex。",
+    "en": "Administrator confirmation installs a removable version-update service for all Windows users. Account stores remain separate. Reopen Codex normally afterward.",
+    "ja": "管理者の確認後、削除可能な更新サービスを全 Windows ユーザー向けにインストールします。アカウントは分離されます。完了後に Codex を開き直してください。",
+    "ko": "관리자 확인 후 제거 가능한 버전 업데이트 서비스를 모든 Windows 사용자에 설치합니다. 계정 저장소는 분리됩니다. 설치 후 Codex를 다시 여세요.",
+    "es": "La confirmación de administrador instala un servicio de actualización desinstalable para todos los usuarios. Las cuentas siguen separadas. Después, vuelve a abrir Codex.",
+    "fr": "La confirmation administrateur installe un service de mise à jour désinstallable pour tous les utilisateurs Windows. Les comptes restent séparés. Rouvrez ensuite Codex.",
+    "de": "Nach Administratorbestätigung wird ein entfernbarer Updatedienst für alle Windows-Benutzer installiert. Konten bleiben getrennt. Danach Codex regulär neu öffnen.",
+    "pt-BR": "A confirmação de administrador instala um serviço removível de atualização para todos os usuários Windows. As contas ficam separadas. Depois, reabra o Codex.",
+    "ru": "После подтверждения администратора устанавливается удаляемая служба обновления для всех пользователей Windows. Учётные записи изолированы. Затем откройте Codex заново."
   }
 }

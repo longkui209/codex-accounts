@@ -4,7 +4,7 @@ Checked 2026-10-25 against the [program](https://developers.openai.com/community
 
 Eligible maintainers can receive six months of ChatGPT Pro with Codex, conditional Codex Security access and API credits. Review considers actual usage, ecosystem relevance and active maintenance; submission does not guarantee selection.
 
-**Current application state: hold.** The maintainer selected a public experimental source preview at [longkui209/codex-accounts](https://github.com/longkui209/codex-accounts). This starts a public maintenance record; it does not establish external adoption or resolve the findings. Applications must describe the actual routing, quota retry, internal endpoints and native adaptation, including their limits.
+**Current application state: submitted by the maintainer; outcome unverified.** The maintainer reported completing the official form and receiving its submission acknowledgement. This is not approval, and the repository's unresolved review findings remain. The public experimental source preview at [longkui209/codex-accounts](https://github.com/longkui209/codex-accounts) starts a public maintenance record; it does not establish external adoption. Applications must describe the actual routing, quota retry, internal endpoints and native adaptation, including their limits.
 
 ## Accurate description draft
 

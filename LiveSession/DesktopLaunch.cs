@@ -135,11 +135,30 @@ public static class DesktopLaunch
             throw new UserFacingException("原生运行文件的 OpenAI 签名校验未通过。");
     }
 
+    internal static void ValidateSandboxServiceImage(string path)
+    {
+        if(!Path.IsPathFullyQualified(path)||Path.GetFileName(path)!="codex-windows-sandbox-service.exe")
+            throw new UserFacingException("官方沙箱服务路径无效。");
+        EnsureNoReparsePoints(path);
+        var signature=JsonSerializer.Deserialize<SignatureRecord>(ReadMetadata(SignatureCommand,path));
+        if(signature is null||signature.SignatureStatus!="Valid"||signature.SignerName!=ExpectedSigner)
+            throw new UserFacingException("官方沙箱服务的 OpenAI 签名校验未通过。");
+    }
+
     internal static string FindInstalledDesktop()
+    {
+        var values=FindInstalledDesktops(false);
+        if(values.Length!=1)throw InvalidInstallation();
+        return values[0];
+    }
+
+    internal static string[] FindInstalledDesktops(bool allUsers)
     {
         try
         {
-            var packages = JsonSerializer.Deserialize<InstalledPackage[]>(ReadMetadata(DiscoveryCommand)) ?? [];
+            var discovery=allUsers?DiscoveryCommand.Replace("Get-AppxPackage -Name OpenAI.Codex -PackageTypeFilter Main",
+                "Get-AppxPackage -AllUsers -Name OpenAI.Codex -PackageTypeFilter Main",StringComparison.Ordinal):DiscoveryCommand;
+            var packages = JsonSerializer.Deserialize<InstalledPackage[]>(ReadMetadata(discovery)) ?? [];
             var trusted = packages.Where(package =>
                 package.Name == ExpectedPackageName &&
                 package.PackageFamily == ExpectedPackageFamily &&
@@ -149,18 +168,23 @@ public static class DesktopLaunch
                 package.PackageStatus == "Ok" &&
                 package.SignatureStatus == "Valid" &&
                 package.SignerName == ExpectedSigner &&
-                Version.TryParse(package.Version, out _)).ToArray();
-            if (trusted.Length != 1) throw InvalidInstallation();
+                Version.TryParse(package.Version, out _)).DistinctBy(package=>package.InstallLocation,StringComparer.OrdinalIgnoreCase).ToArray();
+            if (trusted.Length is <1 or >16 || !allUsers&&trusted.Length!=1) throw InvalidInstallation();
 
-            if (!Path.IsPathFullyQualified(trusted[0].InstallLocation)) throw InvalidInstallation();
-            var installRoot = Path.GetFullPath(trusted[0].InstallLocation);
+            var result=new List<string>();
+            foreach(var package in trusted)
+            {
+            if (!Path.IsPathFullyQualified(package.InstallLocation)) throw InvalidInstallation();
+            var installRoot = Path.GetFullPath(package.InstallLocation);
             if (!Directory.Exists(installRoot)) throw InvalidInstallation();
             var executable = Path.GetFullPath(Path.Combine(installRoot, "app", "ChatGPT.exe"));
             if (!File.Exists(executable) || !executable.StartsWith(
                     installRoot.TrimEnd(Path.DirectorySeparatorChar) + Path.DirectorySeparatorChar,
                     StringComparison.OrdinalIgnoreCase)) throw InvalidInstallation();
             EnsureNoReparsePoints(executable);
-            return executable;
+            result.Add(executable);
+            }
+            return result.ToArray();
         }
         catch (UserFacingException) { throw; }
         catch (Exception error) when (error is JsonException or ArgumentException or IOException or

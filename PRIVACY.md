@@ -11,11 +11,12 @@ Codex Accounts is a local Windows application and MCP plugin. It has no project-
 | Model inputs and outputs | The relay handles request/response bytes and substitutes the selected saved account's authentication. Authorized requests go to fixed OpenAI HTTPS destinations. Optional retry bytes are bounded and memory-only, not a project request log. |
 | Display name, username, avatar | Optional claims from that account's login. Missing fields stay hidden; an avatar can cause a request to an allowlisted external image origin. A masked email is still personal information. |
 | Ordinary-startup component | Program Files runtime and machine registry registration; not a shared account vault. A native application copy can occupy several gigabytes. |
+| Optional version-update service | LocalSystem service with signed installation metadata, owned exact-path startup rules and non-account lifecycle/heartbeat status. This entry does not construct a vault, read authentication or access chats. |
 
 Quota display refreshes while the panel is visible. Calls include the selected/saved account's bearer credential and account identifier. Endpoints on the service operator's domain are not necessarily documented or supported third-party APIs; see the compliance review.
 
 Default HTTP clients can inherit the user's configured proxy. The tool does not install a root certificate or change the system proxy. A local proxy and network operator may see connection metadata; TLS remains required for service destinations.
 
-Removing a saved account retains an encrypted undo copy; it does not cancel the subscription, log out the remote service or necessarily remove desktop authentication. Uninstalling startup integration restores its owned startup registration and can retain runtime files that are in use. Do not describe either action as secure erasure of every copy.
+Removing a saved account retains an encrypted undo copy; it does not cancel the subscription, log out the remote service or necessarily remove desktop authentication. Uninstalling startup integration stops/deletes the owned version-update service, restores its owned startup registration and can retain runtime files that are in use. It does not stop the official sandbox service. Do not describe either action as secure erasure of every copy.
 
 Never publish the local vault, configuration, authentication files, crash dumps, raw diagnostics, test fixtures generated on disk, or a whole development directory. Public source export uses an explicit allowlist and reports only filenames, rule identifiers and hashes when checking for sensitive material.

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "reviewedAt": "2026-10-25",
-  "applicationVersion": "0.14.0",
+  "applicationVersion": "0.15.5",
   "scope": "full existing application source; source-only review candidate",
   "publicationAllowed": false,
   "sourcePreviewPublicationAllowed": true,

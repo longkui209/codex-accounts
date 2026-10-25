@@ -44,6 +44,7 @@ internal static class NativeSurfaceSmoke
         var verified=false;
         var privatePipeResponded=false;
         var frontendVerified=false;
+        var renderingVerified=false;
         var childPathsVerified=false;
         var launchAttempted=false;
         var cleanup=false;
@@ -89,6 +90,8 @@ internal static class NativeSurfaceSmoke
             registrations=NativeBrowserRegistrationGuard.Capture(isolated.Home,isolated.Root,Path.Combine(isolated.Root,"registration-backup"));
             steps.Add("exact browser registration snapshots protected with CurrentUser DPAPI");
             var start=isolated.BuildStartInfo(installed);
+            stage="prepare-current-signed-resource-adapter";
+            bridge.Prepare();
             stage="start-owned-isolated-desktop";
             registrations.MarkLaunched();launchAttempted=true;
             var launchStartedUtc=DateTime.UtcNow;
@@ -112,6 +115,8 @@ internal static class NativeSurfaceSmoke
                 await processMetadata.CaptureAsync(pipe,timeout.Token).ConfigureAwait(false);
                 frontendVerified=bridge.Status.FrontendAdapted;
                 childPathsVerified=processMetadata.ExpectedPathsVerified;
+                if(attempt==8&&!frontendVerified)
+                    await bridge.LoadValidationResourcesAsync(timeout.Token).ConfigureAwait(false);
                 if(requireForwardedChild)
                 {
                     forwardedChild=NativeDiagnosticForwardedChild.ReadSnapshot(pipe,image,isolated.Output);
@@ -136,6 +141,9 @@ internal static class NativeSurfaceSmoke
             if(!frontendVerified)throw new UserFacingException("空白客户端未完成两套前端适配验证。");
             if(!childPathsVerified)throw new UserFacingException(originalChildControl?"尚未实际核验原安装路径 renderer/GPU 的最终保护状态。":"尚未实际核验原目录主进程及保留签名保护的副本 renderer/GPU 进程。");
             if(requireForwardedChild&&!forwardedStable)throw new UserFacingException("尚未核验真实转发的隔离崩溃处理进程稳定存活。");
+            stage="verify-owned-empty-client-rendering";
+            renderingVerified=await bridge.CaptureValidationRenderingAsync(Path.Combine(isolated.Output,"native-render.png"),timeout.Token).ConfigureAwait(false);
+            if(!renderingVerified)throw new IOException("Owned empty client rendering was not observed.");
             steps.Add(originalChildControl?"original browser plus original renderer/GPU observed with signature flags 5; network-service coverage remains unverified":linkedChild?"original browser plus linked original renderer/GPU observed with signature flags 5; network-service coverage remains unverified":"original browser plus copied renderer/GPU observed with signature flags 5; network-service coverage remains unverified");
             steps.Add("empty-profile adapter observed; no account, inference or remote feature was tested");
             adapterBeforeClose=bridge.Status;
@@ -178,7 +186,7 @@ internal static class NativeSurfaceSmoke
             object? adapter=null;int? intercepted=null;
             try{adapter=adapterBeforeClose??bridge.Status;intercepted=bridge.InterceptedCount;}
             catch{cleanupFailures.Add("adapter-final-state-unavailable");failure??="AdapterFinalStateUnavailable";}
-            var passed=verified&&failure is null&&cleanup&&cleanupFailures.Count==0&&recovery?.VerificationPassed==true;
+            var passed=verified&&renderingVerified&&failure is null&&cleanup&&cleanupFailures.Count==0&&recovery?.VerificationPassed==true;
             try
             {
                 File.WriteAllText(Path.Combine(isolated.Output,"native-child-surface-smoke-result.json"),JsonSerializer.Serialize(new
@@ -188,7 +196,7 @@ internal static class NativeSurfaceSmoke
                 main_alias_requested=mainAliasExecutable is not null,copied_main_requested=useCopiedMain,crashpad_forwarding_independently_verified=false,
                 forwarded_child_required=requireForwardedChild,forwarded_child_observation=forwardedChild,
                 forwarded_child_stable_alive=forwardedStable,forwarded_child_alive_samples=forwardedAliveSamples,
-                private_pipe_responded=privatePipeResponded,frontend_loading_verified=frontendVerified,
+                private_pipe_responded=privatePipeResponded,frontend_loading_verified=frontendVerified,empty_client_rendering_verified=renderingVerified,
                 child_path_mode=originalChildControl?"original-install-control":linkedChild?"linked-original":"physical-copy",
                 copied_renderer_gpu_verified=!originalChildControl&&!linkedChild&&childPathsVerified,
                 linked_renderer_gpu_verified=linkedChild&&childPathsVerified,

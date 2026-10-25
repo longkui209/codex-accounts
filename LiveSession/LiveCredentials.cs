@@ -154,7 +154,8 @@ public sealed class LiveCredentials : ILiveCredentials, IDisposable
                 AccountId = before.AccountId,
                 AccessToken = Required(document.RootElement, "access_token"),
                 IdToken = Optional(document.RootElement, "id_token") ?? before.IdToken,
-                RefreshToken = Optional(document.RootElement, "refresh_token") ?? before.RefreshToken
+                RefreshToken = Optional(document.RootElement, "refresh_token") ?? before.RefreshToken,
+                OAuthIssuer=before.OAuthIssuer,OAuthClientId=before.OAuthClientId,LoginOwnerId=before.LoginOwnerId
             };
         }
         finally
@@ -172,7 +173,8 @@ public sealed class LiveCredentials : ILiveCredentials, IDisposable
         auth_mode = "chatgpt",
         OPENAI_API_KEY = (string?)null,
         tokens = new { access_token = tokens.AccessToken, id_token = tokens.IdToken,
-            refresh_token = tokens.RefreshToken, account_id = tokens.AccountId },
+            refresh_token = tokens.RefreshToken, account_id = tokens.AccountId,
+            oauth_provenance=tokens.OAuthIssuer is null?null:new{issuer=tokens.OAuthIssuer,client_id=tokens.OAuthClientId},login_owner_id=tokens.LoginOwnerId },
         last_refresh = now
     });
 
@@ -195,6 +197,12 @@ public sealed class LiveCredentials : ILiveCredentials, IDisposable
         tokens.Subject = Required(id, "sub");
         if (Required(bearer, "sub") != tokens.Subject) throw new UserFacingException(LoginRequired);
         tokens.ClientId = ClientId(id);
+        tokens.LoginOwnerId=Optional(container,"login_owner_id");
+        if(container.TryGetProperty("oauth_provenance",out var provenance)&&provenance.ValueKind!=JsonValueKind.Null)
+        {
+            tokens.OAuthIssuer=Required(provenance,"issuer");tokens.OAuthClientId=Required(provenance,"client_id");
+            if(!OfficialIssuer(tokens.OAuthIssuer)||tokens.OAuthClientId!=tokens.ClientId)throw new UserFacingException(LoginRequired);
+        }
         if (!bearer.TryGetProperty("exp", out var exp) || !exp.TryGetInt64(out var seconds))
             throw new UserFacingException(LoginRequired);
         tokens.ExpiresAtUtc = DateTimeOffset.FromUnixTimeSeconds(seconds);
@@ -285,6 +293,9 @@ public sealed class LiveCredentials : ILiveCredentials, IDisposable
         public string RefreshToken { get; init; } = "";
         public string Subject { get; set; } = "";
         public string ClientId { get; set; } = "";
+        public string? OAuthIssuer {get;set;}
+        public string? OAuthClientId {get;set;}
+        public string? LoginOwnerId {get;set;}
         public DateTimeOffset ExpiresAtUtc { get; set; }
     }
 }

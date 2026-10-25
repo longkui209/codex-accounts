@@ -116,6 +116,26 @@ public static class VaultSelfTests
         finally { CryptographicOperations.ZeroMemory(invalid); }
         reports.Add("1 MiB 大小边界、不支持的认证方式、API Key 和缺失凭据拒绝通过。");
 
+        var withMetadata=System.Text.Json.Nodes.JsonNode.Parse(first.Bytes)!;
+        withMetadata["tokens"]!["oauth_provenance"]=new System.Text.Json.Nodes.JsonObject{["issuer"]="https://auth.openai.com",["client_id"]="app_synthetic_client"};
+        withMetadata["tokens"]!["login_owner_id"]="synthetic-login-owner";
+        var metadataBytes=JsonSerializer.SerializeToUtf8Bytes(withMetadata);
+        try
+        {
+            using var snapshot=AuthSnapshot.FromBytes(metadataBytes);
+            Check(snapshot.Info.IdentityKey==initial.Info.IdentityKey,"新增官方元数据不改变账号标识");
+            store.Save(snapshot);using var roundtrip=store.Read(snapshot.Info.IdentityKey);CheckSameBytes(metadataBytes,roundtrip,"官方元数据加密往返保留");
+            withMetadata["tokens"]!["oauth_provenance"]!["issuer"]="https://example.test";
+            var foreign=JsonSerializer.SerializeToUtf8Bytes(withMetadata);
+            try{ExpectRejection(()=>{using var ignored=AuthSnapshot.FromBytes(foreign);},"非官方 OAuth 颁发方拒绝");}finally{CryptographicOperations.ZeroMemory(foreign);}
+            withMetadata["tokens"]!["oauth_provenance"]!["issuer"]="https://auth.openai.com";
+            withMetadata["tokens"]!["unrecognized_auth_field"]="synthetic-only";
+            var unknown=JsonSerializer.SerializeToUtf8Bytes(withMetadata);
+            try{ExpectRejection(()=>{using var ignored=AuthSnapshot.FromBytes(unknown);},"未知认证字段仍拒绝");}finally{CryptographicOperations.ZeroMemory(unknown);}
+        }
+        finally{CryptographicOperations.ZeroMemory(metadataBytes);}
+        reports.Add("PASS: 官方 OAuth 元数据及登录归属标记兼容且加密保留；账号标识不变，外部颁发方与未知字段仍拒绝。");
+
         var disposable = AuthSnapshot.FromBytes(first.Bytes);
         disposable.Dispose();
         disposable.Dispose();

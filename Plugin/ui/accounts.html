@@ -220,7 +220,7 @@
     <p id="startup-status"><span data-i18n="正在读取组件状态…">正在读取组件状态…</span></p>
     <div class="editor-actions"><button class="button" id="startup-install" data-i18n="安装普通启动" disabled>安装普通启动</button><button class="button ghost" id="startup-uninstall" data-i18n="恢复原版启动" disabled>恢复原版启动</button></div>
     <div id="startup-confirm" hidden>
-      <p data-i18n="需要管理员确认。对所有 Windows 用户生效，账号数据各自隔离。准备完成后正常退出 Codex，组件会自动重开。">需要管理员确认。对所有 Windows 用户生效，账号数据各自隔离。准备完成后正常退出 Codex，组件会自动重开。</p>
+      <p data-i18n="需要管理员确认，将安装可卸载的版本更新服务。对所有 Windows 用户生效，账号数据各自隔离。安装后正常重开 Codex。">需要管理员确认，将安装可卸载的版本更新服务。对所有 Windows 用户生效，账号数据各自隔离。安装后正常重开 Codex。</p>
       <div class="editor-actions"><button class="button primary" id="startup-install-confirm" data-i18n="确认安装">确认安装</button><button class="button ghost" id="startup-cancel" data-i18n="取消">取消</button></div>
     </div>
   </section>
@@ -390,7 +390,7 @@
       })),
       current: payload.current && typeof payload.current === "object" ? { maskedEmail: text(payload.current.maskedEmail, 100), plan: text(payload.current.plan, 30), planSource: payload.current.planSource === "server" ? "server" : "cached" } : null,
       subscriptionRouting: payload.subscriptionRouting === true,
-      startupIntegration:payload.startupIntegration&&typeof payload.startupIntegration==="object"?{state:text(payload.startupIntegration.state,40),message:text(payload.startupIntegration.message,500)}:null,
+      startupIntegration:payload.startupIntegration&&typeof payload.startupIntegration==="object"?{state:text(payload.startupIntegration.state,40),message:text(payload.startupIntegration.message,500),adaptive:payload.startupIntegration.adaptive===true}:null,
       routingStartup: payload.routingStartup && typeof payload.routingStartup === "object" ? {
         stage: text(payload.routingStartup.stage, 60), state: text(payload.routingStartup.state, 40),
         message: text(payload.routingStartup.message), updatedAtUtc: text(payload.routingStartup.updatedAtUtc, 48)
@@ -574,9 +574,9 @@
       : view.desktopQuota?.message ? serverText(view.desktopQuota.message,t("发送适配未加载，请正常重开客户端。")) : "";
     $("desktop-quota-updated").textContent = view.desktopQuota?.updatedAtUtc ? t("官方查询时间：") + displayTime(view.desktopQuota.updatedAtUtc) : "";
     $("auto-rotation").checked = view.live?.autoRotationEnabled === true;
-    $("startup-status").textContent=t(({active:t("普通启动已启用"),preparing:t("正在准备运行文件…"),"waiting-exit":t("请保存任务并正常退出 Codex，随后自动重开。"),failed:t("安装未完成，请重试。"),removed:t("已恢复原版启动。"),"not-registered":t("启动注册缺失，请重新安装。")})[view.startupIntegration?.state]||t("普通启动组件尚未安装。"));
+    $("startup-status").textContent=t(({active:view.startupIntegration?.adaptive?t("版本跟随服务已启用"):t("普通启动已启用"),outdated:view.startupIntegration?.adaptive?t("正在跟随客户端更新，请准备完成后正常重开。"):t("客户端已更新，请更新普通启动组件。"),preparing:t("正在准备运行文件…"),"waiting-exit":t("请保存任务并正常退出 Codex，随后自动重开。"),failed:t("安装未完成，请重试。"),removed:t("已恢复原版启动。"),"not-registered":t("启动注册缺失，请重新安装。")})[view.startupIntegration?.state]||t("普通启动组件尚未安装。"));
     $("startup-install").disabled=!allowed||busy||uncertain||["preparing","waiting-exit"].includes(view.startupIntegration?.state);
-    $("startup-uninstall").disabled=!allowed||busy||uncertain||!["active","failed"].includes(view.startupIntegration?.state);
+    $("startup-uninstall").disabled=!allowed||busy||uncertain||!["active","outdated","failed"].includes(view.startupIntegration?.state);
     $("startup-install").hidden=view.startupIntegration?.state==="active";
     $("auto-rotation").disabled = !allowed || !view.live?.autoRotationSupported;
     $("rotation-caption").textContent = !view.live?.autoRotationSupported ? t("当前后台未加载此功能；正常重开更新后的「Codex（订阅切换）」后可设置。") :

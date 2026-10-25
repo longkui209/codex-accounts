@@ -30,6 +30,9 @@ public sealed class AuthSnapshot : IDisposable
     public AccountInfo Info { get; }
     public AccountProfile Profile { get; }
 
+    private static UserFacingException Unsupported(string reason)
+    {var error=new UserFacingException(UnsupportedMessage);error.Data["auth_schema_reason"]=reason;return error;}
+
     public static AuthSnapshot FromBytes(byte[] source)
     {
         if (source is null || source.Length == 0)
@@ -52,14 +55,14 @@ public sealed class AuthSnapshot : IDisposable
 
             if (root.TryGetProperty("OPENAI_API_KEY", out var apiKey) &&
                 apiKey.ValueKind != JsonValueKind.Null)
-                throw new UserFacingException(UnsupportedMessage);
+                throw Unsupported("api-key");
             if (!root.TryGetProperty("auth_mode", out var mode) ||
                 mode.ValueKind != JsonValueKind.String || mode.GetString() != "chatgpt")
-                throw new UserFacingException(UnsupportedMessage);
+                throw Unsupported("auth-mode");
             foreach (var property in root.EnumerateObject())
             {
                 if (property.Name is not ("auth_mode" or "tokens" or "last_refresh" or "OPENAI_API_KEY"))
-                    throw new UserFacingException(UnsupportedMessage);
+                    throw Unsupported("root-fields");
             }
 
             if (!root.TryGetProperty("tokens", out var tokens))
@@ -68,8 +71,19 @@ public sealed class AuthSnapshot : IDisposable
             EnsureUniqueProperties(tokens);
             foreach (var property in tokens.EnumerateObject())
             {
-                if (property.Name is not ("access_token" or "id_token" or "refresh_token" or "account_id"))
-                    throw new UserFacingException(UnsupportedMessage);
+                if (property.Name is not ("access_token" or "id_token" or "refresh_token" or "account_id" or "oauth_provenance" or "login_owner_id"))
+                    throw Unsupported("token-fields");
+            }
+            if(tokens.TryGetProperty("login_owner_id",out var owner)&&owner.ValueKind!=JsonValueKind.Null)
+                _=RequiredString(tokens,"login_owner_id",512);
+            if(tokens.TryGetProperty("oauth_provenance",out var provenance)&&provenance.ValueKind!=JsonValueKind.Null)
+            {
+                EnsureObject(provenance);EnsureUniqueProperties(provenance);
+                if(provenance.EnumerateObject().Any(p=>p.Name is not ("issuer" or "client_id")))throw Unsupported("oauth-provenance-fields");
+                var issuer=RequiredString(provenance,"issuer",256);
+                if(issuer is not ("https://auth.openai.com" or "https://auth.openai.com/"))throw Unsupported("oauth-provenance-authority");
+                var client=RequiredString(provenance,"client_id",200);
+                if(!client.All(c=>char.IsAsciiLetterOrDigit(c)||c is '_' or '-'))throw Unsupported("oauth-provenance-client");
             }
 
             var accountId = RequiredString(tokens, "account_id", 256);

@@ -12,13 +12,46 @@ internal sealed class NativeInputBridge(NativeSurfacePipe pipe,Func<Cancellation
     private readonly JsonSerializerOptions json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase};
     private Task? events,updates;
     private NativeInputStatus status=new(true,false,false,false,"starting",null);
+    private NativeAdapterCatalog? catalog;
     internal NativeInputStatus Status=>Volatile.Read(ref status);
     internal int InterceptedCount {get;private set;}
     internal bool CaptureValidationFixture {get;init;}
     internal object? ValidationFixture {get;private set;}
     internal object? WorkValidationFixture {get;private set;}
+    internal void Prepare()=>catalog=NativeAdapterCatalog.Installed();
+    internal async Task LoadValidationResourcesAsync(CancellationToken cancellation)
+    {
+        if(!CaptureValidationFixture||catalog is null)throw new InvalidOperationException("Diagnostic resource loading is unavailable.");
+        foreach(var session in sessions.Keys.ToArray())
+        {
+            // Owned empty-profile diagnostics only. Lazy composer modules otherwise remain unloaded
+            // until login, which is deliberately excluded from automated validation.
+            var expression="location.protocol==='app:'&&location.host==='-'?Promise.all("+JsonSerializer.Serialize(catalog.Assets.ToArray())+".map(asset=>import(asset))).then(()=>true):false";
+            await pipe.SendAsync("Runtime.evaluate",new{expression,awaitPromise=true,returnByValue=true},session,cancellation).ConfigureAwait(false);
+        }
+    }
+    internal async Task<bool> CaptureValidationRenderingAsync(string destination,CancellationToken cancellation)
+    {
+        if(!CaptureValidationFixture||File.Exists(destination)||Path.GetExtension(destination)!=".png")throw new InvalidOperationException();
+        foreach(var session in sessions.Where(row=>row.Value).Select(row=>row.Key).ToArray())
+        {
+            var result=await pipe.SendAsync("Runtime.evaluate",new{expression="location.protocol==='app:'&&location.host==='-'&&document.body?{ready:document.body.innerText.length>0,snag:document.body.innerText.includes('ChatGPT hit a snag')}:null",returnByValue=true},session,cancellation).ConfigureAwait(false);
+            if(!result.TryGetProperty("result",out var r)||!r.TryGetProperty("value",out var value)||value.ValueKind!=JsonValueKind.Object)continue;
+            if(value.GetProperty("snag").GetBoolean())throw new IOException("Owned empty client rendered the crash boundary.");
+            if(!value.GetProperty("ready").GetBoolean())continue;
+            var captured=await pipe.SendAsync("Page.captureScreenshot",new{format="png",captureBeyondViewport=false},session,cancellation).ConfigureAwait(false);
+            var bytes=Convert.FromBase64String(captured.GetProperty("data").GetString()!);
+            if(bytes.Length is <32 or >16*1024*1024)throw new IOException();
+            using var output=new FileStream(destination,FileMode.CreateNew,FileAccess.Write,FileShare.None);await output.WriteAsync(bytes,cancellation).ConfigureAwait(false);return true;
+        }
+        return false;
+    }
     internal async Task StartAsync(CancellationToken cancellation)
     {
+        // Both assets must be planned from the current signed install before any interception.
+        // Unknown or ambiguous structures fail closed; no version/hash check is bypassed.
+        try{catalog??=NativeAdapterCatalog.Installed();}
+        catch{Volatile.Write(ref status,new(true,false,false,false,"incompatible",DateTimeOffset.UtcNow));throw;}
         events=EventsAsync();
         await pipe.SendAsync("Browser.getVersion",cancellation:cancellation).ConfigureAwait(false);
         await pipe.SendAsync("Target.setAutoAttach",new {autoAttach=true,waitForDebuggerOnStart=true,flatten=true,
@@ -42,9 +75,8 @@ internal sealed class NativeInputBridge(NativeSurfacePipe pipe,Func<Cancellation
                         sessions[child]=false;
                         try
                         {
-                            await pipe.SendAsync("Fetch.enable",new {patterns=new[]{
-                                new {urlPattern=NativeSendAdapter.Asset,resourceType="Script",requestStage="Response"},
-                                new {urlPattern=NativeSendAdapter.WorkAsset,resourceType="Script",requestStage="Response"}}},child,stop.Token).ConfigureAwait(false);
+                            await pipe.SendAsync("Fetch.enable",new {patterns=catalog!.Assets.Select(asset=>
+                                new {urlPattern=asset,resourceType="Script",requestStage="Response"}).ToArray()},child,stop.Token).ConfigureAwait(false);
                         }
                         finally{await ResumeAsync(child);}
                         break;
@@ -66,21 +98,20 @@ internal sealed class NativeInputBridge(NativeSurfacePipe pipe,Func<Cancellation
         try
         {
             var asset=parameters.GetProperty("request").GetProperty("url").GetString();
-            if(asset is not (NativeSendAdapter.Asset or NativeSendAdapter.WorkAsset) ||
+            if(catalog is null||!catalog.TryPlan(asset,out var plan)||plan is null||
                 !parameters.TryGetProperty("responseStatusCode",out var code) || code.GetInt32()!=200)return;
             var response=await pipe.SendAsync("Fetch.getResponseBody",new {requestId=id},session,stop.Token).ConfigureAwait(false);
             var body=response.GetProperty("body").GetString()!;
             var source=response.TryGetProperty("base64Encoded",out var encoded)&&encoded.GetBoolean()?Encoding.UTF8.GetString(Convert.FromBase64String(body)):body;
-            var adapted=NativeSendAdapter.Adapt(asset,source);
-            if(CaptureValidationFixture && asset==NativeSendAdapter.Asset)ValidationFixture=new {runtimePrelude=NativeSendAdapter.RuntimePrelude,
-                originalDecision=NativeSendAdapter.DecisionFunctionForValidation(source),adaptedDecision=NativeSendAdapter.DecisionFunctionForValidation(adapted),
-                sourceHash=NativeSendAdapter.OriginalHash,syntheticOnly=true};
-            if(CaptureValidationFixture && asset==NativeSendAdapter.WorkAsset)WorkValidationFixture=new {runtimePrelude=NativeSendAdapter.RuntimePrelude,
-                originalDecision=NativeSendAdapter.WorkDecisionForValidation(source),composerDisabled=NativeSendAdapter.ComposerDisabledForValidation(source),
-                originalSourceUntouchedByLocalOverride=NativeSendAdapter.WorkDecisionForValidation(source)==NativeSendAdapter.WorkDecisionForValidation(adapted),
-                adaptedLocalDecision=NativeSendAdapter.LocalWorkDecisionForValidation(adapted),
-                localConsumerAdapted=adapted.Contains("vn=X(bt===`local`&&__caNativeWorkGateAtom)",StringComparison.Ordinal),
-                sourceHash=NativeSendAdapter.WorkOriginalHash,syntheticOnly=true};
+            var adapted=plan.Adapt(source);
+            if(CaptureValidationFixture&&!plan.Work)ValidationFixture=new {runtimePrelude=NativeSendAdapter.RuntimePrelude,
+                originalDecision=plan.Function,adaptedDecision=plan.Function.Replace("=>{","=>{if(__caNativeGateAllows("+plan.Getter+","+plan.Host+"))return "+plan.Inactive+";",StringComparison.Ordinal),
+                sourceHash=plan.SourceHash,syntheticOnly=true};
+            if(CaptureValidationFixture&&plan.Work)WorkValidationFixture=new {runtimePrelude=NativeSendAdapter.RuntimePrelude,
+                originalDecision=plan.Function,originalSourceUntouchedByLocalOverride=plan.DefinitionAsset is not null
+                    ?!catalog.Assets.Contains(plan.DefinitionAsset,StringComparer.Ordinal):adapted.Contains(plan.Anchor+plan.Function,StringComparison.Ordinal),
+                adaptedLocalDecision=plan.WorkCallback,localConsumerAdapted=!adapted.Contains(plan.Consumer,StringComparison.Ordinal),
+                sourceHash=plan.SourceHash,syntheticOnly=true};
             var headers=parameters.GetProperty("responseHeaders").EnumerateArray().Where(header=>
                 header.GetProperty("name").GetString()?.ToLowerInvariant() is not ("content-length" or "content-encoding" or "etag" or "content-md5"))
                 .Select(header=>new {name=header.GetProperty("name").GetString(),value=header.GetProperty("value").GetString()}).ToArray();

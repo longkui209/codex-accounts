@@ -216,6 +216,13 @@ public static class RoutingDiagnosis
         Check("file_auth_supported", () => CodexRuntime.EnsureFileAuthStore(home));
         Check("existing_endpoint_conflict_absent", () => RoutingSettingsGuard.AssertNoExistingEndpoint(home));
         Check("signed_store_desktop_found", () => desktopPath = DesktopLaunch.FindInstalledDesktop());
+        Check("official_sandbox_daemon_verified",()=>
+        {
+            var verified=false;
+            foreach(var process in Process.GetProcessesByName(OfficialSandboxService.ImageName))
+                using(process){verified|=OfficialSandboxService.IsVerifiedDaemon(process);}
+            if(!verified)throw new IOException();
+        });
         Check("signed_official_cli_found", () =>
         {
             cliPath = CodexRuntime.FindCli() ?? throw new IOException();
@@ -242,7 +249,7 @@ public static class RoutingDiagnosis
         var report = new
         {
             read_only = true, account_switch_executed = false, desktop_restarted = false, oauth_or_model_request_executed = false,
-            checks, compatible_native_callers_found = boundCallers,
+            checks, sandbox_verification_stage=OfficialSandboxService.LastVerificationStage,compatible_native_callers_found = boundCallers,
             routing_enabled = routing.Enabled, routing_connected = routing.Connected,
             native_binding_observed = routing.NativeConnectionObserved, verification_state = routing.VerificationState
         };

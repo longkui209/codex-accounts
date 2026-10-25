@@ -13,6 +13,16 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+        if(e.Args.Length==1 && e.Args[0]=="--startup-version-service")
+        {
+            ShutdownMode=ShutdownMode.OnExplicitShutdown;
+            try{StartupVersionService.Run();Shutdown(0);}catch{Shutdown(1);}return;
+        }
+        if(e.Args.Length==2 && e.Args[0]=="--native-adapter-audit")
+        {
+            ShutdownMode=ShutdownMode.OnExplicitShutdown;
+            try{Validation.NativeAdapterAudit.Run(e.Args[1]);Shutdown(0);}catch{Shutdown(1);}return;
+        }
         if(e.Args.Length==1 && e.Args[0] is "--startup-install-wait" or "--startup-uninstall")
         {
             ShutdownMode=ShutdownMode.OnExplicitShutdown;
@@ -345,6 +355,7 @@ public partial class App : Application
             messages = messages.Concat(Validation.NativeInputSelfTests.Run()).ToArray();
             messages = messages.Concat(Validation.NativeBrowserRegistrationGuardSelfTests.Run(safeRoot)).ToArray();
             messages = messages.Concat(Validation.WindowsStartupIntegrationSelfTests.Run()).ToArray();
+            messages = messages.Concat(Validation.NativeAdapterCatalogSelfTests.Run()).ToArray();
             File.WriteAllText(Path.Combine(safeRoot, "result.json"), JsonSerializer.Serialize(new { passed = true, checks = messages }, new JsonSerializerOptions { WriteIndented = true }));
             Shutdown(0);
         }
@@ -359,6 +370,7 @@ public partial class App : Application
     {
         var supported = false;
         var parserSupported = false;
+        string? schemaReason=null;
         var message = "未发现可读取的 Codex 登录缓存。";
         var runtime = CodexRuntime.Inspect();
         try
@@ -370,12 +382,13 @@ public partial class App : Application
             parserSupported = true;
             message = "本机缓存格式兼容；只读解析未验证服务端账号状态。";
         }
-        catch (UserFacingException error) { message = error.Message; }
+        catch (UserFacingException error) { message = error.Message;schemaReason=error.Data["auth_schema_reason"] as string; }
         catch { message = "只读检查失败，没有更改账号。"; }
         File.WriteAllText(Path.GetFullPath(outputFile), JsonSerializer.Serialize(new
         {
             file_store_supported = supported,
             local_auth_format_supported = parserSupported,
+            schema_reason=schemaReason,
             client_running = !runtime.CanSwitch,
             credentials_written = false,
             message
