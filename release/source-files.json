@@ -159,6 +159,7 @@
     "Validation/native-signal-runtime.cjs",
     "Core/OfficialSandboxService.cs",
     "Repair-LegacyRoutingShortcut.ps1",
-    "Validation/LegacyRoutingShortcutSelfCheck.ps1"
+    "Validation/LegacyRoutingShortcutSelfCheck.ps1",
+    "NativeLaunchCommand.ps1"
   ]
 }

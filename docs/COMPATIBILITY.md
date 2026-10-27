@@ -1,6 +1,6 @@
 # Compatibility
 
-Reviewed 2026-10-25. Application source: **0.15.5**. Source preparation does not itself update an active installation; machine deployment and actual requests require separate verification.
+Reviewed 2026-10-27. Application source: **0.15.5**, with subsequent source-only shortcut repair. Source preparation does not itself update an active installation; machine deployment and actual requests require separate verification.
 
 | Area | Evidence and limit |
 | --- | --- |
@@ -10,7 +10,7 @@ Reviewed 2026-10-25. Application source: **0.15.5**. Source preparation does not
 | Request routing | A prior HTTP 200 completion matched a selected subscription different from the unchanged desktop login. This is one recorded local completion, not universal account/model compatibility. |
 | Mihomo / phone remote | The user previously confirmed paired-phone operation after a Mihomo launch. No new real remote check is performed here. |
 | Quota retry | Synthetic parallel failures reproduced the old race and passed after the fix. Natural exhaustion across all live chats was not induced or certified. |
-| Startup | Optional version-update service maintains verified exact-path rules. Resident official sandbox-service recognition and current authentication metadata passed real read-only checks. Other Windows users were not individually tested. Unknown resource layouts remain unsupported; service registration alone does not prove routing. |
+| Startup | Optional version-update service maintains verified exact-path rules. The owned legacy shortcut now resolves and verifies the current image before direct launch; its previous AppsFolder route bypassed integration on a real cold launch. After correction, the maintainer reported working operation and diagnostics observed a connected route, both adapters and HTTP 200 completion. The service was not enabled in that latest snapshot. Every packaged activation path and other Windows users were not individually tested; service registration alone does not prove routing. |
 | Usage / resets | Internal endpoints can change. Stale/unknown values stay labeled; login claims do not prove current plan. No real reset is consumed by validation. |
 | Publication | Complete experimental source preview excludes private/generated/vendor files and discloses findings. Cleared product release and program approval are not asserted. The maintainer separately reported submitting the program form. |
 

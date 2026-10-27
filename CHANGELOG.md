@@ -1,10 +1,13 @@
 # Changelog
 
-## Unreleased — legacy shortcut migration
+## Unreleased — direct startup and legacy shortcut migration
 
-- Repair an existing owned subscription shortcut that still launches an old immutable runtime. With verified native integration installed, it now uses the registered official application entry without embedding a client or switcher version in the launch target.
+- Repair an existing owned subscription shortcut that still launches an old immutable runtime. With verified native integration installed, a self-contained command resolves the current official installation, verifies its signature and owned exact-path rule, then starts the signed image directly. No client or switcher version is embedded in the launch target.
+- Correct the previous AppsFolder migration: reactivation of an existing desktop passed, but a subsequent cold launch bypassed integration. Only recognized owned legacy links are migrated; ordinary packaged activation is not claimed to be covered by this fix.
+- Preserve the complete command through the Unicode shell-link interface because WScript.Shell truncates long arguments. Back up the original and verify a temporary replacement before atomically replacing the owned link.
 - Plugin installation attempts this bounded migration only for the matching legacy marker and runtime under the same checkout's publication directory. The old shortcut is backed up; unrelated shortcuts and account stores are preserved.
 - Reproduced the damage warning with synthetic encrypted data: 0.13.0 rejects the newer authentication metadata, while 0.15.5 reads the same unchanged vault. No real vault recovery or reset is needed for that compatibility error.
+- After the correction the maintainer reported working operation; read-only diagnostics observed a connected route, both input adapters and a completed HTTP 200 request. This latest request used the same account as desktop login; it does not establish another cross-account switch or universal startup compatibility.
 
 ## 0.15.5 — service-stop transition handling
 
