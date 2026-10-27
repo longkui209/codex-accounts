@@ -24,8 +24,16 @@ Source 0.15.3 follows a separately bundled local Codex composer through its actu
 
 The monitor writes a fresh ready heartbeat each cycle and records an intentional stop/shutdown control. Unexpected failures use Windows service recovery (one minute for the first two failures, then five minutes); deliberate stops are not automatically undone. Neither a configured automatic start nor an old ready file proves that a service is currently running. Older builds did not record stop controls, so a previous unexplained stop cannot be retrospectively attributed to a specific caller.
 
-## Restoration
-
 Source 0.15.4 distinguishes the official resident sandbox provisioner from an active client. The exception requires the fixed official SCM service, LocalSystem configuration, matching live PID, exact protected Store path and valid OpenAI signature; it does not ignore all processes with the same name or stop the service. Authentication parsing recognizes the optional provenance/login-owner fields documented by the official [token schema](https://github.com/openai/codex/blob/main/codex-rs/login/src/token_data.rs). Rotation retains those fields and rejects an authority or OAuth-client mismatch while keeping the fixed official token endpoint.
+
+## Legacy subscription shortcut
+
+An old separately created shortcut can still point at an immutable 0.13.0 runtime after the plugin and machine component have been upgraded. That parser rejects newer official authentication metadata and reports a generic vault-damage error. Compatibility must be checked before interpreting this as damaged encryption or restoring any account data.
+
+`Repair-LegacyRoutingShortcut.ps1` recognizes only the exact owned legacy marker, arguments and runtime under this checkout's `dist` tree. It checks the current signed package and owned exact-path integration, backs up the link and targets the official registered application through its stable family/application identifier. It neither launches a second routing host nor pins a runtime version. The current user's shortcut is the only desktop artifact changed. `Install-Plugin.ps1` attempts the same migration; absent or foreign shortcuts remain untouched.
+
+The optional `Validation/LegacyRoutingShortcutSelfCheck.ps1` requires a locally installed verified integration and writes only owned fixture shortcuts under `validation-output`. It verifies a dry run, backup, version-independent target, repeated execution and preservation of a foreign shortcut. It does not start a desktop or read an account store and is not part of the default CI suite.
+
+## Restoration
 
 “Restore original startup” stops and deletes only the owned update service, removes only the integration's owned filters, and retains files used by a running client. User accounts, authentication, conversations, proxies and other plugins are unaffected. Files retained for active clients must not be recursively removed until they are no longer in use.

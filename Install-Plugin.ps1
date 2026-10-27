@@ -11,7 +11,8 @@ $cli = Get-ChildItem -LiteralPath $binaryRoot -Recurse -Filter 'codex.exe' -File
     Sort-Object LastWriteTimeUtc -Descending | Select-Object -First 1 -ExpandProperty FullName
 if (-not $cli) { throw 'Official Codex CLI was not found.' }
 
-# Only plugin configuration is updated. Authentication and running processes are never touched.
+# Plugin configuration and an existing owned legacy shortcut can be updated.
+# Authentication and running processes are never touched.
 $userCodexPath = if ($env:CODEX_HOME) { $env:CODEX_HOME } else { Join-Path $env:USERPROFILE '.codex' }
 $configPath = Join-Path $userCodexPath 'config.toml'
 $backupPath = $null
@@ -48,3 +49,8 @@ if ($alreadyCurrent) {
 }
 Write-Output 'Plugin registered. After Codex reloads plugin metadata, use Explore > Codex account switcher; it can be pinned in sidebar customization.'
 if ($backupPath) { Write-Output ('Encrypted configuration backup: ' + $backupPath) }
+$shortcutRepair = Join-Path $PSScriptRoot 'Repair-LegacyRoutingShortcut.ps1'
+if (Test-Path -LiteralPath $shortcutRepair) {
+    try { & $shortcutRepair -Apply }
+    catch { Write-Warning 'The plugin is installed, but legacy shortcut migration was not completed. Use the normal Codex entry and inspect the owned shortcut separately.' }
+}

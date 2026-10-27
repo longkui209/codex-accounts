@@ -157,6 +157,8 @@
     "Validation/NativeAdapterCatalogSelfTests.cs",
     "docs/VERSION_UPDATES.md",
     "Validation/native-signal-runtime.cjs",
-    "Core/OfficialSandboxService.cs"
+    "Core/OfficialSandboxService.cs",
+    "Repair-LegacyRoutingShortcut.ps1",
+    "Validation/LegacyRoutingShortcutSelfCheck.ps1"
   ]
 }

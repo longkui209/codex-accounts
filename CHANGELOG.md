@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased — legacy shortcut migration
+
+- Repair an existing owned subscription shortcut that still launches an old immutable runtime. With verified native integration installed, it now uses the registered official application entry without embedding a client or switcher version in the launch target.
+- Plugin installation attempts this bounded migration only for the matching legacy marker and runtime under the same checkout's publication directory. The old shortcut is backed up; unrelated shortcuts and account stores are preserved.
+- Reproduced the damage warning with synthetic encrypted data: 0.13.0 rejects the newer authentication metadata, while 0.15.5 reads the same unchanged vault. No real vault recovery or reset is needed for that compatibility error.
+
 ## 0.15.5 — service-stop transition handling
 
 - Handle Windows error 1061 during an owned service stop only by continuing to the existing bounded SCM stopped-state check. Configuration, replacement or removal still cannot proceed until the service is confirmed stopped; no process is forced closed.
